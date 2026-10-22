@@ -389,7 +389,11 @@ function finish(n: Game): Game {
   if (folded) winner = other(folded);
   else {
     const cmp = compare(evaluate(n.hands.w).key, evaluate(n.hands.b).key);
-    winner = cmp > 0 ? "w" : cmp < 0 ? "b" : null;
+    if (cmp === 0)
+      throw new Error(
+        "카드 배정 불일치: 합법적인 단일 덱에서는 포커 동률이 발생하지 않습니다.",
+      );
+    winner = cmp > 0 ? "w" : "b";
   }
   n.result = {
     winner,

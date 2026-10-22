@@ -23,6 +23,7 @@ import {
 import { label, SYMBOLS, evaluate, bestHandAsync, type Card } from "./poker";
 import { restore } from "./persistence";
 import "./style.css";
+import { GoldProcession } from "./GoldProcession";
 const fixtureName = import.meta.env.DEV
   ? new URLSearchParams(location.search).get("fixture")
   : null;
@@ -110,6 +111,8 @@ function PlayingCard({
   );
 }
 function App() {
+  const [titleScreen, setTitleScreen] = useState(true);
+  const [exited, setExited] = useState(false);
   const [g, setG] = useState<Game>(initial),
     [records, setRecords] = useState<RecordEntry[]>(readRecords);
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null),
@@ -142,6 +145,11 @@ function App() {
       ? c.moves({ square: selectedSquare as Square, verbose: true })
       : [];
   const reviewingChess = g.phase === "selection" && !g.chessReviewed;
+  const resultBanner = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (reviewingChess && !titleScreen)
+      resultBanner.current?.scrollIntoView({ block: "start" });
+  }, [reviewingChess, g.id, titleScreen]);
   const humanTurn = g.phase === "chess" && c.turn() === "w";
   const status = reviewingChess
     ? `체스 종료 · ${g.chessResult?.reason} · ${g.chessResult?.winner ? sideName(g.chessResult.winner) + " 승리" : "무승부"}`
@@ -186,7 +194,7 @@ function App() {
     [g.id, g.phase],
   );
   useEffect(() => {
-    if (g.phase !== "chess" || c.turn() !== "b" || modal) return;
+    if (g.phase !== "chess" || c.turn() !== "b" || modal || titleScreen) return;
     let cancelled = false;
     setBusy(true);
     setError("");
@@ -217,7 +225,7 @@ function App() {
       clearTimeout(timer);
       setBusy(false);
     };
-  }, [g.id, g.moves.length, g.phase, modal, retry]);
+  }, [g.id, g.moves.length, g.phase, modal, retry, titleScreen]);
   useEffect(() => {
     if (g.phase !== "selection") {
       setAiHand([]);
@@ -240,7 +248,13 @@ function App() {
     return () => controller.abort();
   }, [g.id, g.phase, retry]);
   useEffect(() => {
-    if (g.phase !== "betting" || g.betting?.turn !== "b" || modal) return;
+    if (
+      g.phase !== "betting" ||
+      g.betting?.turn !== "b" ||
+      modal ||
+      titleScreen
+    )
+      return;
     const timer = setTimeout(() => {
       try {
         const action = chooseBet({
@@ -259,7 +273,7 @@ function App() {
       }
     }, 800);
     return () => clearTimeout(timer);
-  }, [g, modal, retry]);
+  }, [g, modal, retry, titleScreen]);
   useEffect(() => {
     if (!modal && !promotion) return;
     const previous = document.activeElement as HTMLElement | null;
@@ -306,7 +320,7 @@ function App() {
     }
   }
   function clickSquare(square: string) {
-    if (!humanTurn || modal) return;
+    if (!humanTurn || modal || titleScreen) return;
     const targets = legal.filter((m) => m.to === square);
     if (targets.length) {
       if (targets.some((m) => m.promotion))
@@ -410,803 +424,926 @@ function App() {
         </nav>
       </header>
       <main>
-        <section className="intro">
-          <div>
-            <div className="eyebrow">
-              CHESS × POKER <span>EST. IN WONDERLAND</span>
+        {titleScreen && (
+          <section className="title-screen" aria-label="메인 메뉴">
+            <div className="palace-gate" aria-hidden="true">
+              ♜ <span>♛</span> ♜
             </div>
+            <div className="eyebrow">THE ROYAL GARDEN</div>
             <h1>
-              한 수의 전략.
-              <br className="mobile-break" /> 한 장의 반전.
+              JOKER’S
+              <br />
+              GAMBIT
             </h1>
-            <p>왕을 지키고, 당신의 마지막 패를 준비하세요.</p>
-          </div>
-          <div className="round-marker">
-            <span>MATCH</span>
-            <strong>{String(g.round).padStart(2, "0")}</strong>
-            <small>총 2,000 골드</small>
-          </div>
-        </section>
-        {g.phase === "lobby" ? (
-          <section className="lobby panel" aria-label="게임 시작">
-            <div className="panel-eyebrow">
-              TAKE YOUR SEAT · ROUND {g.round}
-            </div>
-            <h2>두 번의 승부, 하나의 판.</h2>
             <p>
-              체스 → 마지막 판 확인 → 포커 → 정산. 한 판을 마치면 새 카드와 새
-              체스판으로 돌아옵니다.
+              {exited
+                ? "진행 상황을 저장했습니다. 이 탭을 닫아 나갈 수 있습니다."
+                : "왕실 정원의 체스판에서, 마지막 다섯 장의 승부까지."}
             </p>
-            <div className="lobby-stakes">
-              <article>
-                <span>내 현재 잔액</span>
-                <strong>{g.banks.w.toLocaleString()} G</strong>
-                <small>
-                  상대 {g.banks.b.toLocaleString()} G · 아직 납부하지 않았습니다
-                </small>
-              </article>
-              <article>
-                <span>이번 판에 걸 골드</span>
-                <strong>20 G</strong>
-                <small>체스 15 G + 포커 5 G · 수수료 없음</small>
-              </article>
-              <article>
-                <span>시작 후 내 금고</span>
-                <strong>{(g.banks.w - 20).toLocaleString()} G</strong>
-                <small>상대도 20 G를 냅니다</small>
-              </article>
+            <div className="title-actions">
+              <button
+                className="primary"
+                onClick={() => {
+                  setTitleScreen(false);
+                  setExited(false);
+                }}
+              >
+                {g.phase === "lobby" ? "시작하기" : "계속하기"}
+              </button>
+              {g.phase !== "lobby" && (
+                <button
+                  onClick={() => {
+                    if (
+                      confirm("진행 중인 판을 종료하고 새 게임을 시작할까요?")
+                    ) {
+                      restart();
+                      setTitleScreen(false);
+                    }
+                  }}
+                >
+                  새로 시작하기
+                </button>
+              )}
+              <button onClick={() => setModal("settings")}>설정</button>
+              <button onClick={() => setExited(true)}>나가기</button>
             </div>
-            <div className="lobby-columns">
-              <section>
-                <h3>♜ 체스 팟 · 30 G</h3>
-                <p>
-                  각자 15 G. 승자가 30 G를 받고, 무승부는 각자 15 G를
-                  돌려받습니다. 배당은 포커 종료까지 보관하며 이번 포커에 다시
-                  걸 수 없습니다.
-                </p>
-              </section>
-              <section>
-                <h3>♠ 포커 기본 팟 · 10 G</h3>
-                <p>
-                  각자 5 G. 생존 카드 중 다섯 장으로 겨룹니다. 추가 베팅으로
-                  팟을 키울 수 있고, 승자가 유효 팟을 받습니다. 동률이면 반씩
-                  나눕니다.
-                </p>
-              </section>
-            </div>
-            <button className="primary full" onClick={() => setG(enterGame(g))}>
-              20 G 걸고 {g.round === 1 ? "시작하기" : "다음 판 시작하기"} →
-            </button>
-            <p className="fine-print">
-              가상 골드만 사용합니다. 최종 잔액 20 G 보장은 없으며, 정산 후 20 G
-              미만이면 다음 판에 참가할 수 없습니다.
-            </p>
-            <div className="lobby-columns">
-              <section>
-                <h3>각각 이기거나 지면?</h3>
-                <p>추가 베팅이 없을 때, 내 시작 잔액 대비 손익입니다.</p>
-                <table className="outcome-table">
-                  <thead>
-                    <tr>
-                      <th>체스</th>
-                      <th>포커</th>
-                      <th>내 손익</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      ["승리", "승리", "+20 G"],
-                      ["승리", "패배·폴드", "+10 G"],
-                      ["패배", "승리", "−10 G"],
-                      ["패배", "패배·폴드", "−20 G"],
-                      ["무승부", "승리", "+5 G"],
-                      ["무승부", "패배·폴드", "−5 G"],
-                    ].map((row) => (
-                      <tr key={row.join()}>
-                        {row.map((cell, i) => (
-                          <td key={i}>{cell}</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="fine-print">
-                  포커 동률이면 포커 손익은 0 G. 체스에 더 큰 보상을 주므로
-                  체스에서 이기고 포커를 폴드해도 기본 판에서는 +10 G가
-                  남습니다.
-                </p>
-              </section>
-              <section>
-                <h3>포커에서 무엇을 선택하나요?</h3>
-                <dl className="action-guide">
-                  <dt>체크</dt>
-                  <dd>
-                    맞춰 낼 금액이 없을 때 추가 베팅 없이 넘깁니다. 서로
-                    체크하면 이미 걸린 팟으로 승부를 봅니다.
-                  </dd>
-                  <dt>폴드</dt>
-                  <dd>
-                    포커를 포기합니다. 참가금 5 G와 이미 맞춰진 베팅은 잃지만
-                    체스 배당은 유지됩니다.
-                  </dd>
-                  <dt>콜</dt>
-                  <dd>
-                    상대 베팅에 맞춰 냅니다. 부족하면 남은 금액만 걸고
-                    올인합니다.
-                  </dd>
-                  <dt>베트 / 레이즈</dt>
-                  <dd>
-                    판돈을 추가하거나 올립니다. 최소 추가 베팅·정상 인상폭은 20
-                    G입니다.
-                  </dd>
-                  <dt>올인</dt>
-                  <dd>
-                    금고에 남은 골드를 모두 겁니다. 상대가 맞추지 못한 초과액은
-                    돌려받습니다.
-                  </dd>
-                </dl>
-              </section>
+            <div className="title-links">
+              <button onClick={() => setModal("help")}>게임 규칙</button>
+              <button onClick={() => setModal("records")}>기록</button>
             </div>
           </section>
-        ) : (
-          <div className="game-layout">
-            <section className="arena" aria-label="게임 테이블">
-              {splitPots && (
-                <div className="stake-summary" aria-label="현재 판돈">
-                  체스 팟 30 G · 포커{" "}
-                  {g.phase === "result" ? "정산 팟" : "현재 팟"}{" "}
-                  {g.settlement?.pot ?? total} G
-                  <span>각자 체스 15 G + 포커 5 G 납부 완료</span>
-                </div>
-              )}
-
-              <div className="phase-bar">
-                <div
-                  className={
-                    g.phase === "chess" || reviewingChess
-                      ? "current"
-                      : "complete"
-                  }
-                >
-                  <span>01</span> 체스
-                </div>
-                <i />
-                <div
-                  className={
-                    (g.phase === "selection" && !reviewingChess) ||
-                    g.phase === "betting"
-                      ? "current"
-                      : g.phase === "result"
-                        ? "complete"
-                        : ""
-                  }
-                >
-                  <span>02</span> 포커
-                </div>
-                <i />
-                <div className={g.phase === "result" ? "current" : ""}>
-                  <span>03</span> 정산
-                </div>
+        )}
+        <div hidden={titleScreen}>
+          <section className="intro">
+            <div>
+              <div className="eyebrow">
+                CHESS × POKER <span>EST. IN WONDERLAND</span>
               </div>
-              <div className="table-area">
-                <div className="player-row opponent-row">
-                  <div className="vault">
-                    <span className="avatar opponent-avatar">♞</span>
-                    <div>
-                      <span className="player-name">
-                        정원의 기사 <small>컴퓨터 · 초급</small>
+              <h1>
+                한 수의 전략.
+                <br className="mobile-break" /> 한 장의 반전.
+              </h1>
+              <p>왕을 지키고, 당신의 마지막 패를 준비하세요.</p>
+            </div>
+            <div className="round-marker">
+              <span>MATCH</span>
+              <strong>{String(g.round).padStart(2, "0")}</strong>
+              <small>총 2,000 골드</small>
+            </div>
+          </section>
+          {g.phase === "lobby" ? (
+            <section className="lobby panel" aria-label="게임 시작">
+              <div className="panel-eyebrow">
+                TAKE YOUR SEAT · ROUND {g.round}
+              </div>
+              <h2>두 번의 승부, 하나의 판.</h2>
+              <p>
+                체스 → 마지막 판 확인 → 포커 → 정산. 한 판을 마치면 새 카드와 새
+                체스판으로 돌아옵니다.
+              </p>
+              <div className="lobby-stakes">
+                <article>
+                  <span>내 현재 잔액</span>
+                  <strong>{g.banks.w.toLocaleString()} G</strong>
+                  <small>
+                    상대 {g.banks.b.toLocaleString()} G · 아직 납부하지
+                    않았습니다
+                  </small>
+                </article>
+                <article>
+                  <span>이번 판에 걸 골드</span>
+                  <strong>20 G</strong>
+                  <small>체스 15 G + 포커 5 G · 수수료 없음</small>
+                </article>
+                <article>
+                  <span>시작 후 내 금고</span>
+                  <strong>{(g.banks.w - 20).toLocaleString()} G</strong>
+                  <small>상대도 20 G를 냅니다</small>
+                </article>
+              </div>
+              <div className="lobby-columns">
+                <section>
+                  <h3>♜ 체스 팟 · 30 G</h3>
+                  <p>
+                    각자 15 G. 승자가 30 G를 받고, 무승부는 각자 15 G를
+                    돌려받습니다. 배당은 포커 종료까지 보관하며 이번 포커에 다시
+                    걸 수 없습니다.
+                  </p>
+                </section>
+                <section>
+                  <h3>♠ 포커 기본 팟 · 10 G</h3>
+                  <p>
+                    각자 5 G. 생존 카드 중 다섯 장으로 겨룹니다. 추가 베팅으로
+                    팟을 키울 수 있고, 족보·숫자·무늬 순서로 결정한 승자가 유효
+                    팟을 받습니다.
+                  </p>
+                </section>
+              </div>
+              <button
+                className="primary full"
+                onClick={() => setG(enterGame(g))}
+              >
+                20 G 걸고 {g.round === 1 ? "시작하기" : "다음 판 시작하기"} →
+              </button>
+              <p className="fine-print">
+                가상 골드만 사용합니다. 최종 잔액 20 G 보장은 없으며, 정산 후 20
+                G 미만이면 다음 판에 참가할 수 없습니다.
+              </p>
+              <div className="lobby-columns">
+                <section>
+                  <h3>각각 이기거나 지면?</h3>
+                  <p>추가 베팅이 없을 때, 내 시작 잔액 대비 손익입니다.</p>
+                  <table className="outcome-table">
+                    <thead>
+                      <tr>
+                        <th>체스</th>
+                        <th>포커</th>
+                        <th>내 손익</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        ["승리", "승리", "+20 G"],
+                        ["승리", "패배·폴드", "+10 G"],
+                        ["패배", "승리", "−10 G"],
+                        ["패배", "패배·폴드", "−20 G"],
+                        ["무승부", "승리", "+5 G"],
+                        ["무승부", "패배·폴드", "−5 G"],
+                      ].map((row) => (
+                        <tr key={row.join()}>
+                          {row.map((cell, i) => (
+                            <td key={i}>{cell}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="fine-print">
+                    포커는 ♠ → ♦ → ♥ → ♣ 순서까지 비교해 승자를 정합니다. 체스에
+                    더 큰 보상을 주므로 체스에서 이기고 포커를 폴드해도 기본
+                    판에서는 +10 G가 남습니다.
+                  </p>
+                </section>
+                <section>
+                  <h3>포커에서 무엇을 선택하나요?</h3>
+                  <dl className="action-guide">
+                    <dt>체크</dt>
+                    <dd>
+                      맞춰 낼 금액이 없을 때 추가 베팅 없이 넘깁니다. 서로
+                      체크하면 이미 걸린 팟으로 승부를 봅니다.
+                    </dd>
+                    <dt>폴드</dt>
+                    <dd>
+                      포커를 포기합니다. 참가금 5 G와 이미 맞춰진 베팅은 잃지만
+                      체스 배당은 유지됩니다.
+                    </dd>
+                    <dt>콜</dt>
+                    <dd>
+                      상대 베팅에 맞춰 냅니다. 부족하면 남은 금액만 걸고
+                      올인합니다.
+                    </dd>
+                    <dt>베트 / 레이즈</dt>
+                    <dd>
+                      판돈을 추가하거나 올립니다. 최소 추가 베팅·정상 인상폭은
+                      20 G입니다.
+                    </dd>
+                    <dt>올인</dt>
+                    <dd>
+                      금고에 남은 골드를 모두 겁니다. 상대가 맞추지 못한
+                      초과액은 돌려받습니다.
+                    </dd>
+                  </dl>
+                </section>
+              </div>
+            </section>
+          ) : (
+            <div className="game-layout">
+              <section className="arena" aria-label="게임 테이블">
+                <GoldProcession game={g} paused={titleScreen || !motion} />
+                {g.phase === "chess" && g.moves.length === 0 && (
+                  <div
+                    className="entry-procession"
+                    aria-label="종자가 참가금을 중앙에 운반합니다"
+                  >
+                    <span className="entry-squire">
+                      ♙<b>♣</b>
+                    </span>
+                    <span className="entry-cart">
+                      ● ● ●<small>◉━━◉</small>
+                    </span>
+                    <strong>양쪽 금고 → 중앙 판돈 · 각 20 G</strong>
+                  </div>
+                )}
+
+                {reviewingChess && (
+                  <div
+                    ref={resultBanner}
+                    className="chess-end-banner"
+                    role="status"
+                  >
+                    <strong>
+                      {g.chessResult?.winner
+                        ? `${sideName(g.chessResult.winner)} 체스 승리`
+                        : "체스 무승부"}
+                    </strong>
+                    <p>
+                      {g.chessResult?.reason}. 체스가 끝났습니다. 아래에서
+                      마지막 판을 확인하고 포커로 계속하세요.
+                    </p>
+                    <button
+                      className="primary full"
+                      onClick={() =>
+                        setG((current) => ({ ...current, chessReviewed: true }))
+                      }
+                    >
+                      포커로 계속 →
+                    </button>
+                  </div>
+                )}
+
+                {splitPots && (
+                  <div className="stake-summary" aria-label="현재 판돈">
+                    체스 팟 30 G · 포커{" "}
+                    {g.phase === "result" ? "정산 팟" : "현재 팟"}{" "}
+                    {g.settlement?.pot ?? total} G
+                    <span>각자 체스 15 G + 포커 5 G 납부 완료</span>
+                  </div>
+                )}
+
+                <div className="phase-bar">
+                  <div
+                    className={
+                      g.phase === "chess" || reviewingChess
+                        ? "current"
+                        : "complete"
+                    }
+                  >
+                    <span>01</span> 체스
+                  </div>
+                  <i />
+                  <div
+                    className={
+                      (g.phase === "selection" && !reviewingChess) ||
+                      g.phase === "betting"
+                        ? "current"
+                        : g.phase === "result"
+                          ? "complete"
+                          : ""
+                    }
+                  >
+                    <span>02</span> 포커
+                  </div>
+                  <i />
+                  <div className={g.phase === "result" ? "current" : ""}>
+                    <span>03</span> 정산
+                  </div>
+                </div>
+                <div className="table-area">
+                  <div className="player-row opponent-row">
+                    <div className="vault">
+                      <span className="avatar opponent-avatar">♞</span>
+                      <div>
+                        <span className="player-name">
+                          정원의 기사 <small>컴퓨터 · 초급</small>
+                        </span>
+                        <strong>
+                          {vault("b").toLocaleString()} <small>G</small>
+                        </strong>
+                        {!splitPots && g.chessResult?.winner === "b" && (
+                          <span className="protection">♜ 최종 20 G 보호</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="captures">
+                      <span>
+                        기사가 잡은 카드 <b>{g.captured.b.length}</b>
                       </span>
-                      <strong>
-                        {vault("b").toLocaleString()} <small>G</small>
-                      </strong>
-                      {!splitPots && g.chessResult?.winner === "b" && (
-                        <span className="protection">♜ 최종 20 G 보호</span>
-                      )}
+                      <div>
+                        {g.captured.b.length ? (
+                          g.captured.b.map((x) => (
+                            <span
+                              key={x.id}
+                              className={
+                                x.suit === "H" || x.suit === "D" ? "red" : ""
+                              }
+                            >
+                              {label(x)}
+                            </span>
+                          ))
+                        ) : (
+                          <small>아직 비어 있습니다</small>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="captures">
-                    <span>
-                      기사가 잡은 카드 <b>{g.captured.b.length}</b>
-                    </span>
-                    <div>
-                      {g.captured.b.length ? (
-                        g.captured.b.map((x) => (
-                          <span
-                            key={x.id}
-                            className={
-                              x.suit === "H" || x.suit === "D" ? "red" : ""
-                            }
-                          >
-                            {label(x)}
+                  {g.phase === "chess" || reviewingChess ? (
+                    <div className="board-shell">
+                      <div
+                        className="board"
+                        role="group"
+                        aria-label="체스판 · 플레이어 백색"
+                      >
+                        <div className="board-ornament top">✦</div>
+                        {c.board().flatMap((row, ri) =>
+                          row.map((piece, fi) => {
+                            const square = `${"abcdefgh"[fi]}${8 - ri}`,
+                              card = g.identities[square],
+                              target = legal.some((m) => m.to === square),
+                              last = c.history({ verbose: true }).at(-1);
+                            return (
+                              <button
+                                key={square}
+                                className={`square ${(ri + fi) % 2 === 0 ? "light" : "dark"} ${selectedSquare === square ? "selected" : ""} ${last?.from === square || last?.to === square ? "last-move" : ""} ${piece?.type === "k" && piece.color === c.turn() && c.isCheck() ? "in-check" : ""}`}
+                                onClick={() => clickSquare(square)}
+                                aria-label={`${square} ${piece ? `${piece.color === "w" ? "내" : "상대"} ${piece.type}` : "빈칸"}${piece?.color === "w" && card ? " " + label(card) : ""}`}
+                                aria-pressed={selectedSquare === square}
+                                disabled={!humanTurn}
+                              >
+                                {fi === 0 && (
+                                  <span className="rank-label">{8 - ri}</span>
+                                )}
+                                {ri === 7 && (
+                                  <span className="file-label">
+                                    {"abcdefgh"[fi]}
+                                  </span>
+                                )}
+                                {piece && (
+                                  <>
+                                    <span
+                                      className={`piece ${piece.color === "w" ? "ivory" : "onyx"}`}
+                                    >
+                                      <span className="chess-hat">
+                                        {PIECES[piece.color][piece.type]}
+                                      </span>
+                                      <span className="card-person">
+                                        <i className="card-face">• ‿ •</i>
+                                        <b>
+                                          {piece.color === "w" && card
+                                            ? label(card)
+                                            : "❖"}
+                                        </b>
+                                        <i className="card-feet">╱ ╲</i>
+                                      </span>
+                                    </span>
+                                    <span
+                                      className={`identity ${piece.color === "b" ? "concealed" : card?.suit === "D" || card?.suit === "H" ? "red" : ""}`}
+                                    >
+                                      {piece.color === "w" && card
+                                        ? label(card)
+                                        : "◆"}
+                                    </span>
+                                  </>
+                                )}
+                                {target && hints && (
+                                  <span
+                                    className={`move-hint ${piece ? "capture-hint" : ""}`}
+                                  />
+                                )}
+                              </button>
+                            );
+                          }),
+                        )}
+                      </div>
+                      <div className="board-caption">
+                        <span>♔ WHITE · YOU</span>
+                        <span>카드 정체성은 승격해도 유지됩니다</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="poker-table">
+                      <span className="table-flourish">❧</span>
+                      <div className="table-attendant" aria-hidden="true">
+                        <i className="squire-head">♙</i>
+                        <i className="squire-body">♣</i>
+                        <span>{g.betting?.folded ? "⚐" : "⚑"}</span>
+                      </div>
+                      {(g.betting?.log.length ?? 0) > 0 && (
+                        <div
+                          key={`${g.betting!.log.length}-${g.phase}`}
+                          className={`gold-carriage ${g.phase === "result" ? "returning" : ""}`}
+                          aria-hidden="true"
+                        >
+                          <span className="cart-squire">
+                            ♙<em>♣</em>
                           </span>
-                        ))
-                      ) : (
-                        <small>아직 비어 있습니다</small>
+                          <i className="coin-load">● ● ●</i>
+                          <b>◉━━◉</b>
+                        </div>
                       )}
+                      <div className="opponent-hand">
+                        {Array.from({ length: 5 }, (_, i) => (
+                          <PlayingCard
+                            key={i}
+                            hidden={!visibleOpponent}
+                            card={visibleOpponent ? g.hands.b[i] : undefined}
+                          />
+                        ))}
+                      </div>
+                      {visibleOpponent && (
+                        <div className="hand-name">
+                          {evaluate(g.hands.b).name}
+                        </div>
+                      )}
+                      <div className="central-pot" key={`${g.id}-${total}`}>
+                        <span className="pot-label">
+                          {g.phase === "result"
+                            ? "이번 판 내 순손익"
+                            : "THE POT"}
+                        </span>
+                        <strong>
+                          {g.phase === "result"
+                            ? `${g.settlement!.final.w - g.banks.w >= 0 ? "+" : ""}${g.settlement!.final.w - g.banks.w}`
+                            : total.toLocaleString()}{" "}
+                          <small>G</small>
+                        </strong>
+                        <span>
+                          {g.phase === "selection"
+                            ? splitPots
+                              ? "포커 참가금 5 G × 2 · 체스 팟 30 G 별도"
+                              : "참가금 20 G × 2"
+                            : g.phase === "result"
+                              ? `정산 완료 · 잔액 ${g.settlement!.final.w.toLocaleString()} G`
+                              : "♜ 유효 판돈은 최종 정산에서 확정"}
+                        </span>
+                      </div>
+                      {g.phase === "selection" ? (
+                        <div className="selection-instruction">
+                          <strong>당신의 마지막 다섯 장</strong>
+                          <span>아래 생존 카드에서 선택하세요</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="own-hand">
+                            {g.hands.w.map((card) => (
+                              <PlayingCard key={card.id} card={card} />
+                            ))}
+                          </div>
+                          <div className="hand-name">
+                            {evaluate(g.hands.w).name}
+                            {g.hands.w.some((x) => x.suit === "J") && (
+                              <small className="joker-resolution">
+                                최적 패{" "}
+                                {evaluate(g.hands.w)
+                                  .resolved.map(label)
+                                  .join(" ")}
+                              </small>
+                            )}
+                          </div>
+                        </>
+                      )}
+                      {g.betting?.folded && (
+                        <div className="fold-banner">
+                          ⚑ {sideName(g.betting.folded)} 폴드 · 상대 패 비공개
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <div className="player-row self-row">
+                    <div className="captures">
+                      <span>
+                        내가 잡은 카드 <b>{g.captured.w.length}</b>
+                      </span>
+                      <div>
+                        {g.captured.w.length ? (
+                          g.captured.w.map((x) => (
+                            <span
+                              key={x.id}
+                              className={
+                                x.suit === "H" || x.suit === "D" ? "red" : ""
+                              }
+                            >
+                              {label(x)}
+                            </span>
+                          ))
+                        ) : (
+                          <small>첫 번째 기회를 기다리는 중</small>
+                        )}
+                      </div>
+                    </div>
+                    <div className="vault">
+                      <div>
+                        <span className="player-name">
+                          당신 <small>PLAYER</small>
+                        </span>
+                        <strong>
+                          {vault("w").toLocaleString()} <small>G</small>
+                        </strong>
+                        {!splitPots && g.chessResult?.winner === "w" && (
+                          <span className="protection">♜ 최종 20 G 보호</span>
+                        )}
+                      </div>
+                      <span className="avatar">♔</span>
                     </div>
                   </div>
                 </div>
-                {g.phase === "chess" || reviewingChess ? (
-                  <div className="board-shell">
-                    <div
-                      className="board"
-                      role="group"
-                      aria-label="체스판 · 플레이어 백색"
-                    >
-                      <div className="board-ornament top">✦</div>
-                      {c.board().flatMap((row, ri) =>
-                        row.map((piece, fi) => {
-                          const square = `${"abcdefgh"[fi]}${8 - ri}`,
-                            card = g.identities[square],
-                            target = legal.some((m) => m.to === square),
-                            last = c.history({ verbose: true }).at(-1);
-                          return (
-                            <button
-                              key={square}
-                              className={`square ${(ri + fi) % 2 === 0 ? "light" : "dark"} ${selectedSquare === square ? "selected" : ""} ${last?.from === square || last?.to === square ? "last-move" : ""} ${piece?.type === "k" && piece.color === c.turn() && c.isCheck() ? "in-check" : ""}`}
-                              onClick={() => clickSquare(square)}
-                              aria-label={`${square} ${piece ? `${piece.color === "w" ? "내" : "상대"} ${piece.type}` : "빈칸"}${piece?.color === "w" && card ? " " + label(card) : ""}`}
-                              aria-pressed={selectedSquare === square}
-                              disabled={!humanTurn}
-                            >
-                              {fi === 0 && (
-                                <span className="rank-label">{8 - ri}</span>
-                              )}
-                              {ri === 7 && (
-                                <span className="file-label">
-                                  {"abcdefgh"[fi]}
-                                </span>
-                              )}
-                              {piece && (
-                                <>
-                                  <span
-                                    className={`piece ${piece.color === "w" ? "ivory" : "onyx"}`}
-                                  >
-                                    {PIECES[piece.color][piece.type]}
-                                  </span>
-                                  <span
-                                    className={`identity ${piece.color === "b" ? "concealed" : card?.suit === "D" || card?.suit === "H" ? "red" : ""}`}
-                                  >
-                                    {piece.color === "w" && card
-                                      ? label(card)
-                                      : "◆"}
-                                  </span>
-                                </>
-                              )}
-                              {target && hints && (
-                                <span
-                                  className={`move-hint ${piece ? "capture-hint" : ""}`}
-                                />
-                              )}
-                            </button>
-                          );
-                        }),
-                      )}
+                <div className="status-bar" role="status">
+                  <span className={`status-dot ${busy ? "thinking" : ""}`} />
+                  {status}
+                  <small>
+                    {g.phase === "chess"
+                      ? `${Math.floor(g.moves.length / 2) + 1}번째 수`
+                      : `${own.length}장 생존`}
+                  </small>
+                </div>
+              </section>
+              <aside className="sidebar">
+                <section className="panel overview">
+                  <div className="panel-eyebrow">THE GAMBIT</div>
+                  <h2>
+                    {reviewingChess
+                      ? "체스 결과를 확인하세요."
+                      : g.phase === "chess"
+                        ? "살아남는 카드가,\n승부를 바꿉니다."
+                        : g.phase === "selection"
+                          ? "선택의 시간."
+                          : g.phase === "betting"
+                            ? "당신의 패를 믿나요?"
+                            : "승부의 기록."}
+                  </h2>
+                  <p>
+                    {reviewingChess
+                      ? "체스의 마지막 상황입니다. 결과를 확인한 다음 포커로 이어집니다."
+                      : g.phase === "chess"
+                        ? "기물을 선택하면 가능한 이동을 볼 수 있어요. 상대의 카드는 잡는 순간 공개됩니다."
+                        : g.phase === "selection"
+                          ? "킹이나 퀸을 반드시 선택할 필요는 없습니다. 조커는 가장 강한 합법 패로 바뀝니다."
+                          : g.phase === "betting"
+                            ? "금고에 남긴 골드는 안전합니다. 올인은 모든 남은 골드를 거는 선택입니다."
+                            : "체스의 전략과 포커의 운명이 하나의 결과로 남았습니다."}
+                  </p>
+                  <div className="mini-stats">
+                    <div>
+                      <small>내 생존 기물</small>
+                      <strong>
+                        {own.length}
+                        <span> / 16</span>
+                      </strong>
                     </div>
-                    <div className="board-caption">
-                      <span>♔ WHITE · YOU</span>
-                      <span>카드 정체성은 승격해도 유지됩니다</span>
+                    <div>
+                      <small>상대 생존 기물</small>
+                      <strong>
+                        {opponent.length}
+                        <span> / 16</span>
+                      </strong>
                     </div>
                   </div>
-                ) : (
-                  <div className="poker-table">
-                    <span className="table-flourish">❧</span>
-                    <div className="table-attendant" aria-hidden="true">
-                      ♟<span>{g.betting?.folded ? "⚐" : "⚑"}</span>
+                  <div className="rule-note">
+                    <span>♜</span>
+                    <p>
+                      {g.chessResult
+                        ? `${g.chessResult.reason} · ${g.chessResult.winner ? sideName(g.chessResult.winner) + " 승리" : "승자 없음"}`
+                        : "어느 쪽이든 5기물이 남으면 체스가 종료됩니다."}
+                      <small>
+                        {splitPots
+                          ? `체스 팟 30 G · ${g.chessResult ? `내 확정 배당 ${chessAward("w")} G (포커 종료 후 지급)` : "결과에 따라 배당"}. 최종 20 G 보장은 없습니다.`
+                          : "기존 판 규칙: 체스 승자는 최종 잔액 20 G를 보호받습니다."}
+                      </small>
+                    </p>
+                  </div>
+                </section>
+                {reviewingChess && (
+                  <section className="panel result-panel" aria-live="polite">
+                    <div className="panel-eyebrow">CHESS RESULT</div>
+                    <h2>
+                      {g.chessResult?.winner
+                        ? sideName(g.chessResult.winner) + " 체스 승리"
+                        : "체스 무승부"}
+                    </h2>
+                    <p>
+                      {g.chessResult?.reason} · 마지막 수 {g.moves.at(-1)}
+                    </p>
+                    <p>
+                      마지막 체스판을 확인하세요. 이번 판은 아직 끝나지
+                      않았습니다. 생존 카드로 포커를 한 번 진행한 뒤 골드를
+                      정산합니다.
+                    </p>
+                    <button
+                      className="primary full"
+                      onClick={() => setG({ ...g, chessReviewed: true })}
+                    >
+                      결과 확인 · 포커로 넘어가기 →
+                    </button>
+                  </section>
+                )}
+                {(g.phase === "chess" || reviewingChess) && (
+                  <section className="panel move-panel">
+                    <div className="panel-title">
+                      <h3>수순 기록</h3>
+                      <span>{reviewingChess ? "FINAL" : "LIVE"}</span>
                     </div>
-                    {(g.betting?.log.length ?? 0) > 0 && (
-                      <div
-                        key={g.betting!.log.length}
-                        className={`gold-carriage ${g.phase === "result" ? "returning" : ""}`}
-                        aria-hidden="true"
-                      >
-                        <span>✦</span>
-                        <i>▰</i>
-                        <b>◉ ◉</b>
+                    <div className="move-table">
+                      <div className="move-table-head">
+                        <span>#</span>
+                        <span>당신 · 백</span>
+                        <span>기사 · 흑</span>
                       </div>
-                    )}
-                    <div className="opponent-hand">
-                      {Array.from({ length: 5 }, (_, i) => (
+                      {g.moves.length ? (
+                        Array.from(
+                          { length: Math.ceil(g.moves.length / 2) },
+                          (_, i) => (
+                            <div key={i} className="move-line">
+                              <span>{i + 1}</span>
+                              <b>{g.moves[i * 2]}</b>
+                              <b>{g.moves[i * 2 + 1] ?? "…"}</b>
+                            </div>
+                          ),
+                        )
+                      ) : (
+                        <div className="empty-moves">
+                          아직 쓰이지 않은 이야기.
+                          <br />
+                          <small>첫 수를 두어 정원을 깨워주세요.</small>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                )}
+                {g.phase === "selection" && !reviewingChess && (
+                  <section className="panel selection-panel">
+                    <div className="panel-title">
+                      <h3>내 생존 카드</h3>
+                      <span>{selectedCards.length} / 5</span>
+                    </div>
+                    <div className="card-picker">
+                      {own.map((card) => (
                         <PlayingCard
-                          key={i}
-                          hidden={!visibleOpponent}
-                          card={visibleOpponent ? g.hands.b[i] : undefined}
+                          key={card.id}
+                          card={card}
+                          selected={selectedCards.includes(card.id)}
+                          small
+                          onClick={() =>
+                            setSelectedCards((old) =>
+                              old.includes(card.id)
+                                ? old.filter((x) => x !== card.id)
+                                : old.length < 5
+                                  ? [...old, card.id]
+                                  : old,
+                            )
+                          }
                         />
                       ))}
                     </div>
-                    {visibleOpponent && (
-                      <div className="hand-name">
-                        {evaluate(g.hands.b).name}
-                      </div>
-                    )}
-                    <div className="central-pot" key={`${g.id}-${total}`}>
-                      <span className="pot-label">
-                        {g.phase === "result" ? "이번 판 내 순손익" : "THE POT"}
-                      </span>
-                      <strong>
-                        {g.phase === "result"
-                          ? `${g.settlement!.final.w - g.banks.w >= 0 ? "+" : ""}${g.settlement!.final.w - g.banks.w}`
-                          : total.toLocaleString()}{" "}
-                        <small>G</small>
-                      </strong>
-                      <span>
-                        {g.phase === "selection"
-                          ? splitPots
-                            ? "포커 참가금 5 G × 2 · 체스 팟 30 G 별도"
-                            : "참가금 20 G × 2"
-                          : g.phase === "result"
-                            ? `정산 완료 · 잔액 ${g.settlement!.final.w.toLocaleString()} G`
-                            : "♜ 유효 판돈은 최종 정산에서 확정"}
-                      </span>
-                    </div>
-                    {g.phase === "selection" ? (
-                      <div className="selection-instruction">
-                        <strong>당신의 마지막 다섯 장</strong>
-                        <span>아래 생존 카드에서 선택하세요</span>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="own-hand">
-                          {g.hands.w.map((card) => (
-                            <PlayingCard key={card.id} card={card} />
-                          ))}
-                        </div>
-                        <div className="hand-name">
-                          {evaluate(g.hands.w).name}
-                          {g.hands.w.some((x) => x.suit === "J") && (
-                            <small className="joker-resolution">
-                              최적 패{" "}
-                              {evaluate(g.hands.w)
-                                .resolved.map(label)
-                                .join(" ")}
-                            </small>
-                          )}
-                        </div>
-                      </>
-                    )}
-                    {g.betting?.folded && (
-                      <div className="fold-banner">
-                        ⚑ {sideName(g.betting.folded)} 폴드 · 상대 패 비공개
-                      </div>
-                    )}
-                  </div>
+                    <p className="selection-name">
+                      {selectedName || "다섯 장을 선택하면 족보가 표시됩니다."}
+                    </p>
+                    <button
+                      className="text-button"
+                      disabled={suggesting}
+                      onClick={suggest}
+                    >
+                      {suggesting
+                        ? "조합을 살펴보는 중…"
+                        : "✦ 가장 강한 패 추천"}
+                    </button>
+                    <button
+                      className="primary full"
+                      disabled={
+                        selectedCards.length !== 5 || aiHand.length !== 5
+                      }
+                      onClick={() => {
+                        try {
+                          setG(startBetting(g, chosen, aiHand));
+                          setError("");
+                        } catch (err) {
+                          setError(String(err));
+                        }
+                      }}
+                    >
+                      {aiHand.length !== 5
+                        ? "상대가 카드를 고르는 중…"
+                        : "이 패로 베팅 시작 →"}
+                    </button>
+                  </section>
                 )}
-                <div className="player-row self-row">
-                  <div className="captures">
-                    <span>
-                      내가 잡은 카드 <b>{g.captured.w.length}</b>
-                    </span>
-                    <div>
-                      {g.captured.w.length ? (
-                        g.captured.w.map((x) => (
-                          <span
-                            key={x.id}
-                            className={
-                              x.suit === "H" || x.suit === "D" ? "red" : ""
-                            }
-                          >
-                            {label(x)}
-                          </span>
-                        ))
-                      ) : (
-                        <small>첫 번째 기회를 기다리는 중</small>
-                      )}
+                {g.phase === "betting" && (
+                  <section className="panel betting-panel">
+                    <div className="panel-title">
+                      <h3>베팅 라운드</h3>
+                      <span>1 / 1</span>
                     </div>
-                  </div>
-                  <div className="vault">
-                    <div>
-                      <span className="player-name">
-                        당신 <small>PLAYER</small>
+                    <div className="bet-summary">
+                      <span>
+                        포커 투입{" "}
+                        <b>{g.committed.w - (splitPots ? 15 : 0)} G</b>
                       </span>
-                      <strong>
-                        {vault("w").toLocaleString()} <small>G</small>
-                      </strong>
-                      {!splitPots && g.chessResult?.winner === "w" && (
-                        <span className="protection">♜ 최종 20 G 보호</span>
-                      )}
+                      <span>
+                        상대 포커 투입{" "}
+                        <b>{g.committed.b - (splitPots ? 15 : 0)} G</b>
+                      </span>
+                      <span>
+                        콜 필요 <b>{Math.min(options.owed, options.left)} G</b>
+                      </span>
                     </div>
-                    <span className="avatar">♔</span>
-                  </div>
-                </div>
-              </div>
-              <div className="status-bar" role="status">
-                <span className={`status-dot ${busy ? "thinking" : ""}`} />
-                {status}
-                <small>
-                  {g.phase === "chess"
-                    ? `${Math.floor(g.moves.length / 2) + 1}번째 수`
-                    : `${own.length}장 생존`}
-                </small>
-              </div>
-            </section>
-            <aside className="sidebar">
-              <section className="panel overview">
-                <div className="panel-eyebrow">THE GAMBIT</div>
-                <h2>
-                  {reviewingChess
-                    ? "체스 결과를 확인하세요."
-                    : g.phase === "chess"
-                      ? "살아남는 카드가,\n승부를 바꿉니다."
-                      : g.phase === "selection"
-                        ? "선택의 시간."
-                        : g.phase === "betting"
-                          ? "당신의 패를 믿나요?"
-                          : "승부의 기록."}
-                </h2>
-                <p>
-                  {reviewingChess
-                    ? "체스의 마지막 상황입니다. 결과를 확인한 다음 포커로 이어집니다."
-                    : g.phase === "chess"
-                      ? "기물을 선택하면 가능한 이동을 볼 수 있어요. 상대의 카드는 잡는 순간 공개됩니다."
-                      : g.phase === "selection"
-                        ? "킹이나 퀸을 반드시 선택할 필요는 없습니다. 조커는 가장 강한 합법 패로 바뀝니다."
-                        : g.phase === "betting"
-                          ? "금고에 남긴 골드는 안전합니다. 올인은 모든 남은 골드를 거는 선택입니다."
-                          : "체스의 전략과 포커의 운명이 하나의 결과로 남았습니다."}
-                </p>
-                <div className="mini-stats">
-                  <div>
-                    <small>내 생존 기물</small>
-                    <strong>
-                      {own.length}
-                      <span> / 16</span>
-                    </strong>
-                  </div>
-                  <div>
-                    <small>상대 생존 기물</small>
-                    <strong>
-                      {opponent.length}
-                      <span> / 16</span>
-                    </strong>
-                  </div>
-                </div>
-                <div className="rule-note">
-                  <span>♜</span>
-                  <p>
-                    {g.chessResult
-                      ? `${g.chessResult.reason} · ${g.chessResult.winner ? sideName(g.chessResult.winner) + " 승리" : "승자 없음"}`
-                      : "어느 쪽이든 5기물이 남으면 체스가 종료됩니다."}
-                    <small>
-                      {splitPots
-                        ? `체스 팟 30 G · ${g.chessResult ? `내 확정 배당 ${chessAward("w")} G (포커 종료 후 지급)` : "결과에 따라 배당"}. 최종 20 G 보장은 없습니다.`
-                        : "기존 판 규칙: 체스 승자는 최종 잔액 20 G를 보호받습니다."}
-                    </small>
-                  </p>
-                </div>
-              </section>
-              {reviewingChess && (
-                <section className="panel result-panel" aria-live="polite">
-                  <div className="panel-eyebrow">CHESS RESULT</div>
-                  <h2>
-                    {g.chessResult?.winner
-                      ? sideName(g.chessResult.winner) + " 체스 승리"
-                      : "체스 무승부"}
-                  </h2>
-                  <p>
-                    {g.chessResult?.reason} · 마지막 수 {g.moves.at(-1)}
-                  </p>
-                  <p>
-                    마지막 체스판을 확인하세요. 이번 판은 아직 끝나지
-                    않았습니다. 생존 카드로 포커를 한 번 진행한 뒤 골드를
-                    정산합니다.
-                  </p>
-                  <button
-                    className="primary full"
-                    onClick={() => setG({ ...g, chessReviewed: true })}
-                  >
-                    결과 확인 · 포커로 넘어가기 →
-                  </button>
-                </section>
-              )}
-              {(g.phase === "chess" || reviewingChess) && (
-                <section className="panel move-panel">
-                  <div className="panel-title">
-                    <h3>수순 기록</h3>
-                    <span>{reviewingChess ? "FINAL" : "LIVE"}</span>
-                  </div>
-                  <div className="move-table">
-                    <div className="move-table-head">
-                      <span>#</span>
-                      <span>당신 · 백</span>
-                      <span>기사 · 흑</span>
-                    </div>
-                    {g.moves.length ? (
-                      Array.from(
-                        { length: Math.ceil(g.moves.length / 2) },
-                        (_, i) => (
-                          <div key={i} className="move-line">
-                            <span>{i + 1}</span>
-                            <b>{g.moves[i * 2]}</b>
-                            <b>{g.moves[i * 2 + 1] ?? "…"}</b>
-                          </div>
-                        ),
-                      )
-                    ) : (
-                      <div className="empty-moves">
-                        아직 쓰이지 않은 이야기.
-                        <br />
-                        <small>첫 수를 두어 정원을 깨워주세요.</small>
-                      </div>
-                    )}
-                  </div>
-                </section>
-              )}
-              {g.phase === "selection" && !reviewingChess && (
-                <section className="panel selection-panel">
-                  <div className="panel-title">
-                    <h3>내 생존 카드</h3>
-                    <span>{selectedCards.length} / 5</span>
-                  </div>
-                  <div className="card-picker">
-                    {own.map((card) => (
-                      <PlayingCard
-                        key={card.id}
-                        card={card}
-                        selected={selectedCards.includes(card.id)}
-                        small
+                    <div className="action-grid">
+                      <button
+                        disabled={!options.check && !options.call}
+                        className="primary"
                         onClick={() =>
-                          setSelectedCards((old) =>
-                            old.includes(card.id)
-                              ? old.filter((x) => x !== card.id)
-                              : old.length < 5
-                                ? [...old, card.id]
-                                : old,
+                          bet({ type: options.call ? "call" : "check" })
+                        }
+                      >
+                        {options.call
+                          ? `콜 ${Math.min(options.owed, options.left)} G`
+                          : "체크"}
+                      </button>
+                      <button
+                        disabled={!options.active}
+                        onClick={() => bet({ type: "fold" })}
+                      >
+                        ⚑ 폴드
+                      </button>
+                    </div>
+                    <label className="raise-label">
+                      포커 총 투입액으로 베트 / 레이즈
+                      <input
+                        type="number"
+                        min={options.minTotal - (splitPots ? 15 : 0)}
+                        max={options.maxTotal - (splitPots ? 15 : 0)}
+                        step="1"
+                        value={
+                          Math.max(raise, options.minTotal) -
+                          (splitPots ? 15 : 0)
+                        }
+                        onChange={(e) =>
+                          setRaise(
+                            Number(e.target.value) + (splitPots ? 15 : 0),
                           )
                         }
+                        disabled={!options.raise}
                       />
-                    ))}
-                  </div>
-                  <p className="selection-name">
-                    {selectedName || "다섯 장을 선택하면 족보가 표시됩니다."}
-                  </p>
-                  <button
-                    className="text-button"
-                    disabled={suggesting}
-                    onClick={suggest}
-                  >
-                    {suggesting ? "조합을 살펴보는 중…" : "✦ 가장 강한 패 추천"}
-                  </button>
-                  <button
-                    className="primary full"
-                    disabled={selectedCards.length !== 5 || aiHand.length !== 5}
-                    onClick={() => {
-                      try {
-                        setG(startBetting(g, chosen, aiHand));
-                        setError("");
-                      } catch (err) {
-                        setError(String(err));
-                      }
-                    }}
-                  >
-                    {aiHand.length !== 5
-                      ? "상대가 카드를 고르는 중…"
-                      : "이 패로 베팅 시작 →"}
-                  </button>
-                </section>
-              )}
-              {g.phase === "betting" && (
-                <section className="panel betting-panel">
-                  <div className="panel-title">
-                    <h3>베팅 라운드</h3>
-                    <span>1 / 1</span>
-                  </div>
-                  <div className="bet-summary">
-                    <span>
-                      포커 투입 <b>{g.committed.w - (splitPots ? 15 : 0)} G</b>
-                    </span>
-                    <span>
-                      상대 포커 투입{" "}
-                      <b>{g.committed.b - (splitPots ? 15 : 0)} G</b>
-                    </span>
-                    <span>
-                      콜 필요 <b>{Math.min(options.owed, options.left)} G</b>
-                    </span>
-                  </div>
-                  <div className="action-grid">
-                    <button
-                      disabled={!options.check && !options.call}
-                      className="primary"
-                      onClick={() =>
-                        bet({ type: options.call ? "call" : "check" })
-                      }
-                    >
-                      {options.call
-                        ? `콜 ${Math.min(options.owed, options.left)} G`
-                        : "체크"}
-                    </button>
-                    <button
-                      disabled={!options.active}
-                      onClick={() => bet({ type: "fold" })}
-                    >
-                      ⚑ 폴드
-                    </button>
-                  </div>
-                  <label className="raise-label">
-                    포커 총 투입액으로 베트 / 레이즈
-                    <input
-                      type="number"
-                      min={options.minTotal - (splitPots ? 15 : 0)}
-                      max={options.maxTotal - (splitPots ? 15 : 0)}
-                      step="1"
-                      value={
-                        Math.max(raise, options.minTotal) - (splitPots ? 15 : 0)
-                      }
-                      onChange={(e) =>
-                        setRaise(Number(e.target.value) + (splitPots ? 15 : 0))
-                      }
-                      disabled={!options.raise}
-                    />
-                  </label>
-                  <div className="action-grid">
-                    <button
-                      disabled={
-                        !options.raise ||
-                        Math.max(raise, options.minTotal) > options.maxTotal
-                      }
-                      onClick={() =>
-                        bet({
-                          type: "raise",
-                          amount: Math.max(raise, options.minTotal),
-                        })
-                      }
-                    >
-                      베트 / 레이즈
-                    </button>
-                    <button
-                      className="all-in"
-                      disabled={!options.allin}
-                      onClick={() => bet({ type: "allin" })}
-                    >
-                      올인 {options.left} G
-                    </button>
-                  </div>
-                  <p className="fine-print">
-                    최소 인상폭 {g.betting!.lastRaise} G · 미대응 초과액은
-                    반환됩니다.
-                  </p>
-                  <div className="bet-log" aria-live="polite">
-                    {g.betting!.log.map((x, i) => (
-                      <div key={i}>{x}</div>
-                    ))}
-                  </div>
-                </section>
-              )}
-              {g.phase === "result" && g.settlement && (
-                <section className="panel result-panel">
-                  <div className="result-icon">
-                    {g.result?.winner === "w"
-                      ? "♛"
-                      : g.result?.winner === "b"
-                        ? "♞"
-                        : "⚖"}
-                  </div>
-                  <h2>
-                    {g.result?.winner === "w"
-                      ? "포커 · 당신의 승리"
-                      : g.result?.winner === "b"
-                        ? "포커 · 기사의 승리"
-                        : "무승부"}
-                  </h2>
-                  <p>
-                    {g.result?.reason} ·{" "}
-                    {g.settlement.final.w - g.banks.w >= 0 ? "+" : ""}
-                    {g.settlement.final.w - g.banks.w} G
-                  </p>
-                  <p>
-                    체스와 포커가 모두 끝났습니다. 다음 판은 새 체스판과 새
-                    카드로 시작하며 참가금 20 G를 다시 냅니다.
-                  </p>
-                  {splitPots && (
-                    <p>
-                      체스 순손익{" "}
-                      {g.settlement.chessAward!.w - 15 >= 0 ? "+" : ""}
-                      {g.settlement.chessAward!.w - 15} G · 포커 순손익{" "}
-                      {g.settlement.award.w -
-                        (g.committed.w - 15 - g.settlement.returned.w) >=
-                      0
-                        ? "+"
-                        : ""}
-                      {g.settlement.award.w -
-                        (g.committed.w - 15 - g.settlement.returned.w)}{" "}
-                      G
-                    </p>
-                  )}
-                  <dl>
-                    <div>
-                      <dt>내 시작 잔액</dt>
-                      <dd>{g.banks.w} G</dd>
-                    </div>
-                    <div>
-                      <dt>내 총 투입액 (참가금 포함)</dt>
-                      <dd>{g.committed.w} G</dd>
-                    </div>
-                    <div>
-                      <dt>
-                        {splitPots
-                          ? "내 포커 배당"
-                          : "내 팟 배당 (보호 조정 전)"}
-                      </dt>
-                      <dd>{g.settlement.award.w} G</dd>
-                    </div>
-                    <div>
-                      <dt>내 순손익</dt>
-                      <dd>
-                        {g.settlement.final.w - g.banks.w >= 0 ? "+" : ""}
-                        {g.settlement.final.w - g.banks.w} G
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>포커 경합 팟</dt>
-                      <dd>{g.settlement.pot} G</dd>
-                    </div>
-                    <div>
-                      <dt>내 초과액 반환</dt>
-                      <dd>{g.settlement.returned.w} G</dd>
-                    </div>
-                    <div>
-                      <dt>{splitPots ? "체스 배당" : "20 G 보호 조정"}</dt>
-                      <dd>
-                        {splitPots
-                          ? g.settlement.chessAward!.w
-                          : g.settlement.protection}{" "}
-                        G
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>내 최종 잔액</dt>
-                      <dd>{g.settlement.final.w} G</dd>
-                    </div>
-                  </dl>
-                  {Math.min(g.settlement.final.w, g.settlement.final.b) < 20 ? (
-                    <>
-                      <p className="end-message">
-                        {g.settlement.final.w < 20
-                          ? "참가금이 부족해 전체 게임이 종료되었습니다."
-                          : "상대가 다음 판에 참가할 수 없습니다. 전체 게임 승리!"}
-                      </p>
-                      <button className="primary full" onClick={restart}>
-                        새 게임 시작
+                    </label>
+                    <div className="action-grid">
+                      <button
+                        disabled={
+                          !options.raise ||
+                          Math.max(raise, options.minTotal) > options.maxTotal
+                        }
+                        onClick={() =>
+                          bet({
+                            type: "raise",
+                            amount: Math.max(raise, options.minTotal),
+                          })
+                        }
+                      >
+                        베트 / 레이즈
                       </button>
-                    </>
-                  ) : (
-                    <button className="primary full" onClick={next}>
-                      다음 판 · 체스부터 시작 →
-                    </button>
-                  )}
-                  {g.achievements.length > 0 && (
-                    <div className="achievement-list">
-                      {g.achievements.map((x) => (
-                        <span key={x}>✦ {x}</span>
+                      <button
+                        className="all-in"
+                        disabled={!options.allin}
+                        onClick={() => bet({ type: "allin" })}
+                      >
+                        올인 {options.left} G
+                      </button>
+                    </div>
+                    <p className="fine-print">
+                      최소 인상폭 {g.betting!.lastRaise} G · 미대응 초과액은
+                      반환됩니다.
+                    </p>
+                    <div className="bet-log" aria-live="polite">
+                      {g.betting!.log.map((x, i) => (
+                        <div key={i}>{x}</div>
                       ))}
                     </div>
-                  )}
-                </section>
-              )}
-              <div className="garden-quote">
-                <span>❦</span>
-                <p>
-                  “모든 왕관 뒤에는,
-                  <br />
-                  아직 펼치지 않은 카드가 있다.”
-                </p>
-                <small>— THE ROYAL GARDEN —</small>
-              </div>
-            </aside>
-          </div>
-        )}
-        {error && (
-          <div className="error" role="alert">
-            {error}
-            <button
-              onClick={() => {
-                setError("");
-                setRetry((x) => x + 1);
-              }}
-            >
-              다시 시도
-            </button>
-          </div>
-        )}
+                  </section>
+                )}
+                {g.phase === "result" && g.settlement && (
+                  <section className="panel result-panel">
+                    <div className="result-icon">
+                      {g.result?.winner === "w"
+                        ? "♛"
+                        : g.result?.winner === "b"
+                          ? "♞"
+                          : "⚖"}
+                    </div>
+                    <h2>
+                      {g.result?.winner === "w"
+                        ? "포커 · 당신의 승리"
+                        : g.result?.winner === "b"
+                          ? "포커 · 기사의 승리"
+                          : "무승부"}
+                    </h2>
+                    <p>
+                      {g.result?.reason} ·{" "}
+                      {g.settlement.final.w - g.banks.w >= 0 ? "+" : ""}
+                      {g.settlement.final.w - g.banks.w} G
+                    </p>
+                    <p>
+                      체스와 포커가 모두 끝났습니다. 다음 판은 새 체스판과 새
+                      카드로 시작하며 참가금 20 G를 다시 냅니다.
+                    </p>
+                    {splitPots && (
+                      <p>
+                        체스 순손익{" "}
+                        {g.settlement.chessAward!.w - 15 >= 0 ? "+" : ""}
+                        {g.settlement.chessAward!.w - 15} G · 포커 순손익{" "}
+                        {g.settlement.award.w -
+                          (g.committed.w - 15 - g.settlement.returned.w) >=
+                        0
+                          ? "+"
+                          : ""}
+                        {g.settlement.award.w -
+                          (g.committed.w - 15 - g.settlement.returned.w)}{" "}
+                        G
+                      </p>
+                    )}
+                    <dl>
+                      <div>
+                        <dt>내 시작 잔액</dt>
+                        <dd>{g.banks.w} G</dd>
+                      </div>
+                      <div>
+                        <dt>내 총 투입액 (참가금 포함)</dt>
+                        <dd>{g.committed.w} G</dd>
+                      </div>
+                      <div>
+                        <dt>
+                          {splitPots
+                            ? "내 포커 배당"
+                            : "내 팟 배당 (보호 조정 전)"}
+                        </dt>
+                        <dd>{g.settlement.award.w} G</dd>
+                      </div>
+                      <div>
+                        <dt>내 순손익</dt>
+                        <dd>
+                          {g.settlement.final.w - g.banks.w >= 0 ? "+" : ""}
+                          {g.settlement.final.w - g.banks.w} G
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>포커 경합 팟</dt>
+                        <dd>{g.settlement.pot} G</dd>
+                      </div>
+                      <div>
+                        <dt>내 초과액 반환</dt>
+                        <dd>{g.settlement.returned.w} G</dd>
+                      </div>
+                      <div>
+                        <dt>{splitPots ? "체스 배당" : "20 G 보호 조정"}</dt>
+                        <dd>
+                          {splitPots
+                            ? g.settlement.chessAward!.w
+                            : g.settlement.protection}{" "}
+                          G
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>내 최종 잔액</dt>
+                        <dd>{g.settlement.final.w} G</dd>
+                      </div>
+                    </dl>
+                    {Math.min(g.settlement.final.w, g.settlement.final.b) <
+                    20 ? (
+                      <>
+                        <p className="end-message">
+                          {g.settlement.final.w < 20
+                            ? "참가금이 부족해 전체 게임이 종료되었습니다."
+                            : "상대가 다음 판에 참가할 수 없습니다. 전체 게임 승리!"}
+                        </p>
+                        <button className="primary full" onClick={restart}>
+                          새 게임 시작
+                        </button>
+                      </>
+                    ) : (
+                      <button className="primary full" onClick={next}>
+                        다음 판 · 체스부터 시작 →
+                      </button>
+                    )}
+                    {g.achievements.length > 0 && (
+                      <div className="achievement-list">
+                        {g.achievements.map((x) => (
+                          <span key={x}>✦ {x}</span>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                )}
+                <div className="garden-quote">
+                  <span>❦</span>
+                  <p>
+                    “모든 왕관 뒤에는,
+                    <br />
+                    아직 펼치지 않은 카드가 있다.”
+                  </p>
+                  <small>— THE ROYAL GARDEN —</small>
+                </div>
+              </aside>
+            </div>
+          )}
+          {error && (
+            <div className="error" role="alert">
+              {error}
+              <button
+                onClick={() => {
+                  setError("");
+                  setRetry((x) => x + 1);
+                }}
+              >
+                다시 시도
+              </button>
+            </div>
+          )}
+        </div>
         <footer>
           <span>♠ ♦ ♥ ♣</span>
           <p>
@@ -1298,9 +1435,9 @@ function App() {
                   <li>
                     <b>최종 정산</b>미대응 초과액을 반환하고 유효 팟을
                     분배합니다. 새 판은 최종 20 G 보장이 없습니다. 포커 체크도 5
-                    G 참가금은 걸려 있으며 폴드하면 잃습니다. 동률은 반씩
-                    분배합니다. 기존 저장 판은 기존 20 G 참가금·보호 규칙으로
-                    마칩니다.
+                    G 참가금은 걸려 있으며 폴드하면 잃습니다. 포커는 무늬까지
+                    비교해 승자를 결정합니다. 기존 저장 판은 기존 20 G
+                    참가금·보호 규칙으로 마칩니다.
                   </li>
                   <li>
                     <b>다음 판</b>최종 잔액이 20 G 미만이면 전체 패배입니다.
@@ -1373,7 +1510,13 @@ function App() {
                   >
                     새 전체 게임
                   </button>
-                  <button onClick={() => setModal("menu")}>
+                  <button
+                    onClick={() => {
+                      setModal(null);
+                      setTitleScreen(true);
+                      setExited(true);
+                    }}
+                  >
                     Exit · 저장된 상태로 일시정지
                   </button>
                 </div>

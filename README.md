@@ -1,3 +1,9 @@
+> **재설계 진행 중:** 최신 기준은 [제품 재설계](docs/20_PRODUCT_REDESIGN.md). 아래 실행 프로토타입은 아직 이전30/10 경제이며 최신15G확보 규칙과 다릅니다.
+
+# 현행 규칙과 요구 대조
+
+[현재 규칙](docs/CURRENT_RULES.md) · [요구 재점검/미완료 항목](docs/19_REQUIREMENTS_AUDIT.md)
+
 # Joker’s Gambit · The Royal Garden
 
 체스의 한 수, 포커의 한 장. **플레이 가능한 브라우저 2D 프로토타입 v0.2**입니다.
