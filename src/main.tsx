@@ -347,7 +347,16 @@ function App() {
     [selectedCards, g.identities],
   );
   const visibleOpponent = g.phase === "result" && !g.betting?.folded;
-  const total = g.committed.w + g.committed.b;
+  const splitPots = g.economy === "split-15-5";
+  const chessAward = (s: Side) =>
+    !g.chessResult
+      ? 0
+      : g.chessResult.winner === s
+        ? 30
+        : g.chessResult.winner === null
+          ? 15
+          : 0;
+  const total = g.committed.w + g.committed.b - (splitPots ? 30 : 0);
   const vault = (s: Side) =>
     g.settlement ? g.settlement.final[s] : g.banks[s] - g.committed[s];
   function next() {
@@ -456,7 +465,7 @@ function App() {
                     <strong>
                       {vault("b").toLocaleString()} <small>G</small>
                     </strong>
-                    {g.chessResult?.winner === "b" && (
+                    {!splitPots && g.chessResult?.winner === "b" && (
                       <span className="protection">♜ 최종 20 G 보호</span>
                     )}
                   </div>
@@ -586,7 +595,9 @@ function App() {
                     </strong>
                     <span>
                       {g.phase === "selection"
-                        ? "참가금 20 G × 2"
+                        ? splitPots
+                          ? "포커 참가금 5 G × 2 · 체스 팟 30 G 별도"
+                          : "참가금 20 G × 2"
                         : g.phase === "result"
                           ? `정산 완료 · 잔액 ${g.settlement!.final.w.toLocaleString()} G`
                           : "♜ 유효 판돈은 최종 정산에서 확정"}
@@ -652,7 +663,7 @@ function App() {
                     <strong>
                       {vault("w").toLocaleString()} <small>G</small>
                     </strong>
-                    {g.chessResult?.winner === "w" && (
+                    {!splitPots && g.chessResult?.winner === "w" && (
                       <span className="protection">♜ 최종 20 G 보호</span>
                     )}
                   </div>
@@ -717,7 +728,11 @@ function App() {
                   {g.chessResult
                     ? `${g.chessResult.reason} · ${g.chessResult.winner ? sideName(g.chessResult.winner) + " 승리" : "승자 없음"}`
                     : "어느 쪽이든 5기물이 남으면 체스가 종료됩니다."}
-                  <small>체스 승자는 최종 잔액 20 G를 보호받습니다.</small>
+                  <small>
+                    {splitPots
+                      ? `체스 팟 30 G · 내 확정 배당 ${chessAward("w")} G (포커 종료 후 지급). 최종 20 G 보장은 없습니다.`
+                      : "기존 판 규칙: 체스 승자는 최종 잔액 20 G를 보호받습니다."}
+                  </small>
                 </p>
               </div>
             </section>
@@ -838,10 +853,11 @@ function App() {
                 </div>
                 <div className="bet-summary">
                   <span>
-                    내 투입 <b>{g.committed.w} G</b>
+                    포커 투입 <b>{g.committed.w - (splitPots ? 15 : 0)} G</b>
                   </span>
                   <span>
-                    상대 투입 <b>{g.committed.b} G</b>
+                    상대 포커 투입{" "}
+                    <b>{g.committed.b - (splitPots ? 15 : 0)} G</b>
                   </span>
                   <span>
                     콜 필요 <b>{Math.min(options.owed, options.left)} G</b>
@@ -867,14 +883,18 @@ function App() {
                   </button>
                 </div>
                 <label className="raise-label">
-                  총 투입액으로 베트 / 레이즈
+                  포커 총 투입액으로 베트 / 레이즈
                   <input
                     type="number"
-                    min={options.minTotal}
-                    max={options.maxTotal}
+                    min={options.minTotal - (splitPots ? 15 : 0)}
+                    max={options.maxTotal - (splitPots ? 15 : 0)}
                     step="1"
-                    value={Math.max(raise, options.minTotal)}
-                    onChange={(e) => setRaise(Number(e.target.value))}
+                    value={
+                      Math.max(raise, options.minTotal) - (splitPots ? 15 : 0)
+                    }
+                    onChange={(e) =>
+                      setRaise(Number(e.target.value) + (splitPots ? 15 : 0))
+                    }
                     disabled={!options.raise}
                   />
                 </label>
@@ -937,6 +957,21 @@ function App() {
                   체스와 포커가 모두 끝났습니다. 다음 판은 새 체스판과 새 카드로
                   시작하며 참가금 20 G를 다시 냅니다.
                 </p>
+                {splitPots && (
+                  <p>
+                    체스 순손익{" "}
+                    {g.settlement.chessAward!.w - 15 >= 0 ? "+" : ""}
+                    {g.settlement.chessAward!.w - 15} G · 포커 순손익{" "}
+                    {g.settlement.award.w -
+                      (g.committed.w - 15 - g.settlement.returned.w) >=
+                    0
+                      ? "+"
+                      : ""}
+                    {g.settlement.award.w -
+                      (g.committed.w - 15 - g.settlement.returned.w)}{" "}
+                    G
+                  </p>
+                )}
                 <dl>
                   <div>
                     <dt>내 시작 잔액</dt>
@@ -947,7 +982,9 @@ function App() {
                     <dd>{g.committed.w} G</dd>
                   </div>
                   <div>
-                    <dt>내 팟 배당 (보호 조정 전)</dt>
+                    <dt>
+                      {splitPots ? "내 포커 배당" : "내 팟 배당 (보호 조정 전)"}
+                    </dt>
                     <dd>{g.settlement.award.w} G</dd>
                   </div>
                   <div>
@@ -958,7 +995,7 @@ function App() {
                     </dd>
                   </div>
                   <div>
-                    <dt>경합 팟</dt>
+                    <dt>포커 경합 팟</dt>
                     <dd>{g.settlement.pot} G</dd>
                   </div>
                   <div>
@@ -966,8 +1003,13 @@ function App() {
                     <dd>{g.settlement.returned.w} G</dd>
                   </div>
                   <div>
-                    <dt>20 G 보호 조정</dt>
-                    <dd>{g.settlement.protection} G</dd>
+                    <dt>{splitPots ? "체스 배당" : "20 G 보호 조정"}</dt>
+                    <dd>
+                      {splitPots
+                        ? g.settlement.chessAward!.w
+                        : g.settlement.protection}{" "}
+                      G
+                    </dd>
                   </div>
                   <div>
                     <dt>내 최종 잔액</dt>
@@ -1085,8 +1127,10 @@ function App() {
                 <h2>정원의 규칙</h2>
                 <ol className="rules">
                   <li>
-                    <b>입장</b>각 1,000 G로 시작하고 매 판 20 G씩 중앙 팟에
-                    냅니다.
+                    <b>입장</b>각 1,000 G로 시작합니다. 새 판마다 체스 15 G +
+                    포커 5 G를 미리 냅니다. 체스 팟 30 G는 승자에게, 무승부이면
+                    15 G씩 반환합니다. 체스 배당은 이번 포커에 재사용할 수
+                    없습니다.
                   </li>
                   <li>
                     <b>체스</b>일반 체스처럼 움직입니다. 내 기물의 카드가
@@ -1111,8 +1155,10 @@ function App() {
                   </li>
                   <li>
                     <b>최종 정산</b>미대응 초과액을 반환하고 유효 팟을
-                    분배합니다. 체스 승자가 포커에서 져도 최종 20 G는 남습니다.
-                    체스 무승부에는 보호가 없습니다. 동률은 반씩 분배합니다.
+                    분배합니다. 새 판은 최종 20 G 보장이 없습니다. 포커 체크도 5
+                    G 참가금은 걸려 있으며 폴드하면 잃습니다. 동률은 반씩
+                    분배합니다. 기존 저장 판은 기존 20 G 참가금·보호 규칙으로
+                    마칩니다.
                   </li>
                   <li>
                     <b>다음 판</b>최종 잔액이 20 G 미만이면 전체 패배입니다.

@@ -284,7 +284,7 @@ describe("end-to-end betting state machine", () => {
     g = act(g, "w", { type: "raise", amount: 100 });
     g = act(g, "b", { type: "fold" });
     expect(g.settlement!.returned.w).toBe(80);
-    expect(g.settlement!.final).toEqual({ w: 1020, b: 980 });
+    expect(g.settlement!.final).toEqual({ w: 990, b: 1010 });
     expect(makeRecord(g).hands).toEqual({ w: [], b: [] });
   });
   it("unequal all-ins refund the large stack", () => {
@@ -295,7 +295,7 @@ describe("end-to-end betting state machine", () => {
     g = act(g, "b", { type: "call" });
     expect(g.phase).toBe("result");
     expect(g.committed).toEqual({ w: 100, b: 100 });
-    expect(g.settlement!.pot).toBe(200);
+    expect(g.settlement!.pot).toBe(170);
   });
   it("short all-in does not reopen a previous actor", () => {
     let g = ready({ w: 1830, b: 170 });
@@ -310,7 +310,7 @@ describe("end-to-end betting state machine", () => {
   it("forced ante-only all-in settles without impossible action", () => {
     const g = ready({ w: 20, b: 1980 });
     expect(g.phase).toBe("result");
-    expect(g.settlement!.pot).toBe(40);
+    expect(g.settlement!.pot).toBe(10);
   });
   it("rejects out-of-turn, under-raise, NaN, and check facing bet", () => {
     let g = ready();

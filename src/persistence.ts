@@ -12,6 +12,7 @@ export function restore(raw: string | null): Game | null {
     const g = JSON.parse(raw) as Game;
     if (
       g.version !== 2 ||
+      (g.economy !== undefined && g.economy !== "split-15-5") ||
       typeof g.id !== "string" ||
       !Number.isInteger(g.round) ||
       g.round < 1 ||
@@ -115,6 +116,7 @@ export function restore(raw: string | null): Game | null {
           g.committed,
           g.chessResult!.winner,
           g.result.winner,
+          g.economy,
         );
         if (JSON.stringify(expected) !== JSON.stringify(g.settlement))
           return null;

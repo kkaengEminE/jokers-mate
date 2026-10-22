@@ -13,6 +13,7 @@ export interface Settlement {
   returned: Pair;
   award: Pair;
   protection: number;
+  chessAward?: Pair;
   pot: number;
 }
 export interface Betting {
@@ -26,6 +27,7 @@ export interface Betting {
 }
 export interface Game {
   version: 2;
+  economy?: "split-15-5";
   id: string;
   round: number;
   phase: "chess" | "selection" | "betting" | "result";
@@ -43,6 +45,7 @@ export interface Game {
   achievements: string[];
 }
 export interface RecordEntry {
+  economy?: Game["economy"];
   id: string;
   date: string;
   round: number;
@@ -82,6 +85,7 @@ export function newGame(banks: Pair = { w: 1000, b: 1000 }, round = 1): Game {
         identities[piece.square] = remaining.pop()!;
   return {
     version: 2,
+    economy: "split-15-5",
     id: crypto.randomUUID(),
     round,
     phase: "chess",
@@ -187,6 +191,7 @@ export function settle(
   c: Pair,
   chessWinner: Side | null,
   pokerWinner: Side | null,
+  economy?: Game["economy"],
 ): Settlement {
   for (const s of ["w", "b"] as Side[])
     if (
@@ -198,6 +203,26 @@ export function settle(
     )
       throw new Error("유효하지 않은 원장");
   if (banks.w + banks.b !== 2000) throw new Error("총 골드 불일치");
+  if (economy === "split-15-5") {
+    const m = Math.min(c.w, c.b);
+    const pot = 2 * (m - 15);
+    const returned = { w: c.w - m, b: c.b - m };
+    const chessAward = {
+      w: chessWinner === "w" ? 30 : chessWinner === null ? 15 : 0,
+      b: chessWinner === "b" ? 30 : chessWinner === null ? 15 : 0,
+    };
+    const award = {
+      w: pokerWinner === "w" ? pot : pokerWinner === null ? pot / 2 : 0,
+      b: pokerWinner === "b" ? pot : pokerWinner === null ? pot / 2 : 0,
+    };
+    const final = {
+      w: banks.w - m + chessAward.w + award.w,
+      b: banks.b - m + chessAward.b + award.b,
+    };
+    if (final.w + final.b !== 2000 || Math.min(final.w, final.b) < 0)
+      throw new Error("보존 실패");
+    return { final, returned, award, chessAward, protection: 0, pot };
+  }
   const m = Math.min(c.w, c.b),
     pot = 2 * m,
     returned = { w: c.w - m, b: c.b - m },
@@ -358,7 +383,13 @@ function finish(n: Game): Game {
     winner,
     reason: folded ? "폴드" : winner ? "쇼다운" : "쇼다운 동률",
   };
-  n.settlement = settle(n.banks, n.committed, n.chessResult!.winner, winner);
+  n.settlement = settle(
+    n.banks,
+    n.committed,
+    n.chessResult!.winner,
+    winner,
+    n.economy,
+  );
   n.phase = "result";
   if (!folded) {
     const h = evaluate(n.hands.w);
@@ -386,7 +417,9 @@ function finish(n: Game): Game {
   if (n.settlement.final.w < 20)
     n.achievements.push("다음 기회를 기다리며 · 파산");
   if (n.chessResult!.winner === "b" && winner === "w")
-    n.achievements.push("역전의 한 장");
+    n.achievements.push(
+      n.economy ? "포커 설욕 · 체스 패배 후 포커 승리" : "역전의 한 장",
+    );
   if (n.settlement.final.b < 20) n.achievements.push("정원의 주인");
   n.achievements = [...new Set(n.achievements)];
   return n;
@@ -397,6 +430,7 @@ export function makeRecord(g: Game): RecordEntry {
   const hands = g.betting?.folded ? { w: [], b: [] } : g.hands;
   return {
     id: g.id,
+    economy: g.economy,
     date: new Date().toISOString(),
     round: g.round,
     chess: `${g.chessResult!.reason} · ${g.chessResult!.winner ? sideName(g.chessResult!.winner) : "무승부"}`,
