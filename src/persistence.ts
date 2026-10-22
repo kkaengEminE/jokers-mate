@@ -17,7 +17,7 @@ export function restore(raw: string | null): Game | null {
       !Number.isInteger(g.round) ||
       g.round < 1 ||
       !Array.isArray(g.moves) ||
-      !["chess", "selection", "betting", "result"].includes(g.phase)
+      !["lobby", "chess", "selection", "betting", "result"].includes(g.phase)
     )
       return null;
     const c = chessOf(g),
@@ -52,10 +52,26 @@ export function restore(raw: string | null): Game | null {
         !Number.isSafeInteger(g.banks[s]) ||
         !Number.isSafeInteger(g.committed[s]) ||
         g.banks[s] < 20 ||
-        g.committed[s] < 20 ||
+        g.committed[s] < (g.phase === "lobby" ? 0 : 20) ||
         g.committed[s] > g.banks[s]
       )
         return null;
+    if (g.phase === "lobby") {
+      if (
+        g.economy !== "split-15-5" ||
+        g.moves.length ||
+        g.committed.w ||
+        g.committed.b ||
+        g.chessResult ||
+        g.betting ||
+        g.result ||
+        g.settlement ||
+        g.hands?.w.length !== 0 ||
+        g.hands?.b.length !== 0
+      )
+        return null;
+      return g;
+    }
     const end = chessEnd(c);
     if (JSON.stringify(end) !== JSON.stringify(g.chessResult)) return null;
     if (!Array.isArray(g.hands?.w) || !Array.isArray(g.hands?.b)) return null;

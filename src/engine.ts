@@ -30,7 +30,7 @@ export interface Game {
   economy?: "split-15-5";
   id: string;
   round: number;
-  phase: "chess" | "selection" | "betting" | "result";
+  phase: "lobby" | "chess" | "selection" | "betting" | "result";
   moves: string[];
   identities: Record<string, Card>;
   captured: Record<Side, Card[]>;
@@ -101,6 +101,18 @@ export function newGame(banks: Pair = { w: 1000, b: 1000 }, round = 1): Game {
     settlement: null,
     achievements: [],
   };
+}
+export function newLobby(banks: Pair = { w: 1000, b: 1000 }, round = 1): Game {
+  return {
+    ...newGame(banks, round),
+    phase: "lobby",
+    committed: { w: 0, b: 0 },
+  };
+}
+export function enterGame(g: Game): Game {
+  if (g.phase !== "lobby" || g.committed.w || g.committed.b)
+    throw new Error("이미 참가한 판입니다.");
+  return { ...g, phase: "chess", committed: { w: 20, b: 20 } };
 }
 export function chessOf(game: Pick<Game, "moves">): Chess {
   const c = new Chess();
