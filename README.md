@@ -1,3 +1,5 @@
+> **최신 설계:** [정산 R3](docs/21_ECONOMY_CORRECTION.md) · [게임/엔딩 흐름](docs/22_CAMPAIGN_FLOW.md) · [오류·변경 대장](docs/CHANGE_REGISTER.md). 이전15/25 설명은 폐기. 런타임 이행 전입니다.
+
 > **재설계 진행 중:** 최신 기준은 [제품 재설계](docs/20_PRODUCT_REDESIGN.md). 아래 실행 프로토타입은 아직 이전30/10 경제이며 최신15G확보 규칙과 다릅니다.
 
 # 현행 규칙과 요구 대조
