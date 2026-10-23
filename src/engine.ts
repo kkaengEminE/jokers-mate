@@ -27,7 +27,12 @@ export interface Betting {
 }
 export interface Game {
   version: 2;
-  economy?: "split-15-5";
+  economy?: "split-15-5" | "r3";
+  journey?: {
+    opponent: "roan" | "emperor";
+    screen: "play" | "prologue" | "ending" | "failed" | "complete";
+  };
+  abandoned?: boolean;
   id: string;
   round: number;
   phase: "lobby" | "chess" | "selection" | "betting" | "result";
@@ -85,7 +90,7 @@ export function newGame(banks: Pair = { w: 1000, b: 1000 }, round = 1): Game {
         identities[piece.square] = remaining.pop()!;
   return {
     version: 2,
-    economy: "split-15-5",
+    economy: "r3",
     id: crypto.randomUUID(),
     round,
     phase: "chess",
@@ -214,14 +219,20 @@ export function settle(
       c[s] > banks[s]
     )
       throw new Error("유효하지 않은 원장");
-  if (banks.w + banks.b !== 2000) throw new Error("총 골드 불일치");
-  if (economy === "split-15-5") {
+  const supply = banks.w + banks.b;
+  if (economy !== "r3" && supply !== 2000)
+    throw new Error("이전 원장의 총 골드 불일치");
+  if (!Number.isSafeInteger(supply)) throw new Error("총 골드 범위 오류");
+  if (economy === "split-15-5" || economy === "r3") {
+    if (economy === "r3" && !pokerWinner)
+      throw new Error("포커 승자가 필요합니다.");
     const m = Math.min(c.w, c.b);
-    const pot = 2 * (m - 15);
+    const drawCarry = economy === "r3" && chessWinner === null;
+    const pot = 2 * m - (drawCarry ? 0 : 30);
     const returned = { w: c.w - m, b: c.b - m };
     const chessAward = {
-      w: chessWinner === "w" ? 30 : chessWinner === null ? 15 : 0,
-      b: chessWinner === "b" ? 30 : chessWinner === null ? 15 : 0,
+      w: chessWinner === "w" ? 30 : chessWinner === null && !drawCarry ? 15 : 0,
+      b: chessWinner === "b" ? 30 : chessWinner === null && !drawCarry ? 15 : 0,
     };
     const award = {
       w: pokerWinner === "w" ? pot : pokerWinner === null ? pot / 2 : 0,
@@ -231,7 +242,7 @@ export function settle(
       w: banks.w - m + chessAward.w + award.w,
       b: banks.b - m + chessAward.b + award.b,
     };
-    if (final.w + final.b !== 2000 || Math.min(final.w, final.b) < 0)
+    if (final.w + final.b !== supply || Math.min(final.w, final.b) < 0)
       throw new Error("보존 실패");
     return { final, returned, award, chessAward, protection: 0, pot };
   }
@@ -250,7 +261,7 @@ export function settle(
     final[chessWinner] += protection;
     final[other(chessWinner)] -= protection;
   }
-  if (final.w + final.b !== 2000 || Math.min(final.w, final.b) < 0)
+  if (final.w + final.b !== supply || Math.min(final.w, final.b) < 0)
     throw new Error("보존 실패");
   return { final, returned, award, protection, pot };
 }
@@ -443,13 +454,15 @@ function finish(n: Game): Game {
 export function makeRecord(g: Game): RecordEntry {
   if (!g.settlement) throw new Error("미완료 판");
   // Never store a folded hand or unselected identities in the public history.
-  const hands = g.betting?.folded ? { w: [], b: [] } : g.hands;
+  const hands = g.abandoned || g.betting?.folded ? { w: [], b: [] } : g.hands;
   return {
     id: g.id,
     economy: g.economy,
     date: new Date().toISOString(),
     round: g.round,
-    chess: `${g.chessResult!.reason} · ${g.chessResult!.winner ? sideName(g.chessResult!.winner) : "무승부"}`,
+    chess: g.chessResult
+      ? `${g.chessResult.reason} · ${g.chessResult.winner ? sideName(g.chessResult.winner) : "무승부"}`
+      : "도주 · 미완료",
     poker: `${g.result!.reason} · ${g.result!.winner ? sideName(g.result!.winner) : "무승부"}`,
     final: g.settlement.final,
     pgn: chessOf(g).pgn(),

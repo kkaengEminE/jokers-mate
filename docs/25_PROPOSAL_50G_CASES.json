@@ -1,0 +1,41 @@
+{
+  "status": "proposal-not-approved",
+  "cases_checked": 126,
+  "chess_win_poker_fold": [
+    {
+      "player_start": 1000,
+      "player_final": 990,
+      "opponent_final": 1010,
+      "protection": 0,
+      "net": -10
+    },
+    {
+      "player_start": 60,
+      "player_final": 50,
+      "opponent_final": 1950,
+      "protection": 0,
+      "net": -10
+    },
+    {
+      "player_start": 59,
+      "player_final": 50,
+      "opponent_final": 1950,
+      "protection": 1,
+      "net": -9
+    },
+    {
+      "player_start": 51,
+      "player_final": 50,
+      "opponent_final": 1950,
+      "protection": 9,
+      "net": -1
+    },
+    {
+      "player_start": 50,
+      "player_final": 50,
+      "opponent_final": 1950,
+      "protection": 10,
+      "net": 0
+    }
+  ]
+}

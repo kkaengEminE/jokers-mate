@@ -1,14 +1,24 @@
-> 이름·도메인 표기와 캠페인의 임시 범위: [브랜드 및 확장 메모](docs/24_BRAND_AND_SCOPE.md)
-
-> **최신 설계:** [정산 R3](docs/21_ECONOMY_CORRECTION.md) · [게임/엔딩 흐름](docs/22_CAMPAIGN_FLOW.md) · [오류·변경 대장](docs/CHANGE_REGISTER.md). 이전15/25 설명은 폐기. 런타임 이행 전입니다.
-
-> **구현 상태:** 실행 프로토타입은 결정적 체스 30G/포커 10G를 사용합니다. R3의 체스 무승부 이월 및 캠페인·엔딩 흐름은 아직 구현 전입니다. 문서20의 전체15/25 계산은 폐기했습니다.
-
-# 현행 규칙과 요구 대조
-
-[현재 규칙](docs/CURRENT_RULES.md) · [요구 재점검/미완료 항목](docs/19_REQUIREMENTS_AUDIT.md)
-
 # Joker’s Mate · The Royal Garden
+
+> 구현 검증: [26 대조 결과](docs/26_IMPLEMENTATION_REVIEW.md) · 별도 의견: [50G 개편안 검토](docs/25_STAKES_PROPOSAL_REVIEW.md) (미채택)
+
+## 설계 문서
+
+| 문서 | 내용 |
+|---|---|
+| [01 게임 비전](docs/01_GAME_VISION.md) | 핵심 경험, 제품 범위, 세계관·인물 |
+| [02 통합 규칙](docs/02_GAME_RULES.md) | 한 판의 흐름과 규칙 요약 |
+| [03 카드](docs/03_CARD_SYSTEM.md) · [04 체스](docs/04_CHESS_SYSTEM.md) · [05 포커](docs/05_POKER_SYSTEM.md) | 세부 규칙 |
+| [06 경제](docs/06_ECONOMY_SYSTEM.md) | 예치·배당·정산식, 도주 패배 |
+| [07 컴퓨터 상대](docs/07_AI_DESIGN.md) | 내장 초급 상대 |
+| [08 게임 흐름](docs/08_GAME_FLOW.md) | 메뉴, 판 상태, 캠페인, 엔딩 |
+| [09 화면](docs/09_UI_UX_SPEC.md) · [10 업적](docs/10_ACHIEVEMENTS.md) | 화면·연출, 업적·기록 |
+| [11 데이터](docs/11_DATA_MODEL.md) · [12 기술](docs/12_TECH_ARCHITECTURE.md) | 저장 구조, 기술 구성 |
+| [13 아트](docs/13_ART_DIRECTION.md) · [14 로드맵](docs/14_ROADMAP.md) | 미술 방향, 진행 현황 |
+| [미결 사항](docs/OPEN_QUESTIONS.md) · [변경 대장](docs/CHANGE_REGISTER.md) | 남은 결정, 변경 이력 |
+
+15~24번, CURRENT_RULES, DECISION_LOG, PHASE_1_REPORT는 작성 당시의 기록이며 현행 설계는 위 문서를 따른다.
+
 
 체스의 한 수, 포커의 한 장. **플레이 가능한 브라우저 2D 프로토타입 v0.2**입니다.
 
@@ -38,20 +48,15 @@ macOS에서는 [START_GAME.command](START_GAME.command)를 실행해 설치 확�
 - chess.js 기반 합법 이동, 체크 방어, 승격 선택, 체크메이트, 5기물 종료 특례, 반복·50수 무승부.
 - 생존 카드 중 5장 선택 및 최적 패 추천. 조커 0~2장, A-low, 랭크·무늬 비교.
 - 체크·베트·콜·레이즈·폴드·올인. 불균등 스택, 짧은 올인, 미대응 금액 반환.
-- 총 2000골드 보존. 새 판은 체스15G·포커5G 분리, 최종20G 보호 폐지. 정산 후20 미만이면 다음 판 참가 불가. [현행 경제](docs/18_APPROVED_ECONOMY.md).
+- 판마다 체스 15G·포커 5G 예치. 체스 승자는 양측 체스몫 30G, 포커 승자는 포커몫 10G와 유효 추가 베팅을 받으며 한 번에 정산. 정산 후 20G 미만이면 다음 판 참가 불가. 체스 무승부 시 40G 전부 포커로 넘기는 규칙은 반영 중. [06 경제](docs/06_ECONOMY_SYSTEM.md).
 - 초급 컴퓨터의 2-ply 탐색, 자기 카드 보존 평가, 자기 패만 사용하는 베팅. 상대 숨은 카드 입력 없음.
 - 반응형 정원 테이블, 공개 캡처함, 금고, 카드 테이블, 간단한 마차·깃발 연출, 이동 표시와 모션 설정.
 - 진행 자동 저장/복구, 최근 100판 결과·PGN·공개 카드·정산 내역·업적, JSON 내보내기.
 
 ## 적용 규칙과 문서
 
-기존 Phase 1의 승인/미승인 기록을 지우지 않았습니다. 사용자에게 권장안을 제시한 후 “게임 구현까지 해줘”라는 지시에 따라 0.2에서 적용한 규칙과, 구현 중 선택한 조정 가능한 기본값은 [15_PROTOTYPE_DECISIONS](docs/15_PROTOTYPE_DECISIONS.md)에 구분했습니다.
+현행 설계는 위 [설계 문서](#설계-문서) 표를 따릅니다. 베팅·체스 색상 등 조정 가능한 기본값도 04·05 문서에 포함했고, 남은 결정은 [미결 사항](docs/OPEN_QUESTIONS.md)에 있습니다.
 
-- [01 비전](docs/01_GAME_VISION.md) · [02 통합 규칙](docs/02_GAME_RULES.md) · [03 카드](docs/03_CARD_SYSTEM.md)
-- [04 체스](docs/04_CHESS_SYSTEM.md) · [05 포커](docs/05_POKER_SYSTEM.md) · [06 경제](docs/06_ECONOMY_SYSTEM.md)
-- [07 컴퓨터 상대](docs/07_AI_DESIGN.md) · [08 흐름](docs/08_GAME_FLOW.md) · [09 화면](docs/09_UI_UX_SPEC.md)
-- [10 업적](docs/10_ACHIEVEMENTS.md) · [11 데이터](docs/11_DATA_MODEL.md) · [12 기술 구조](docs/12_TECH_ARCHITECTURE.md)
-- [13 미술](docs/13_ART_DIRECTION.md) · [14 로드맵](docs/14_ROADMAP.md)
 - [남은 결정](docs/OPEN_QUESTIONS.md) · [결정 기록](docs/DECISION_LOG.md) · [검증 결과](docs/16_VALIDATION.md)
 
 ## 현재 한계

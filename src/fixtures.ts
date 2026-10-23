@@ -6,6 +6,7 @@ import {
   chessOf,
   survivors,
   act,
+  settle,
   type Game,
 } from "./engine";
 export function fixture(name: string): Game {
@@ -19,5 +20,28 @@ export function fixture(name: string): Game {
   );
   if (name === "betting") return g;
   g = act(g, "w", { type: "allin" });
-  return act(g, "b", { type: name === "fold" ? "fold" : "call" });
+  g = act(g, "b", { type: name === "fold" ? "fold" : "call" });
+  if (name.startsWith("campaign-")) {
+    const emperor = name.includes("emperor");
+    const failed = name.includes("failed");
+    g.journey = { opponent: emperor ? "emperor" : "roan", screen: "play" };
+    g.banks = { w: 1000, b: emperor ? 2_100_000_000 : 1000 };
+    g.committed = { ...g.banks };
+    // QA-only terminal snapshot: settled outcome, never bundled in production.
+    g.chessResult = { winner: failed ? "b" : "w", reason: "검증용 체크메이트" };
+    g.result = { winner: failed ? "b" : "w", reason: "검증용 쇼다운" };
+    g.settlement = settle(
+      g.banks,
+      g.committed,
+      g.chessResult.winner,
+      g.result.winner,
+      "r3",
+    );
+    if (emperor && !failed) {
+      g.banks = { w: 2_100_000_000, b: 1000 };
+      g.committed = { w: 1000, b: 1000 };
+      g.settlement = settle(g.banks, g.committed, "w", "w", "r3");
+    }
+  }
+  return g;
 }

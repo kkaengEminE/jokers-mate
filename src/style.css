@@ -2229,3 +2229,13 @@ input[type="checkbox"] {
     display: none;
   }
 }
+
+.emperor-title { color: #f4cf66; text-shadow: 0 0 12px #f4cf6655; }
+.story-screen p { max-width: 720px; margin: 24px auto; line-height: 1.9; }
+.intro[hidden] { display: none; }
+
+.settlement-ledger { width: 100%; border-collapse: collapse; font-size: 14px; margin: 20px 0; }
+.settlement-ledger caption { text-align: left; color: #d4bd80; margin-bottom: 12px; }
+.settlement-ledger th, .settlement-ledger td { padding: 10px 4px; border-bottom: 1px solid #c7b67933; }
+.settlement-ledger th { text-align: left; font-weight: normal; }
+.settlement-ledger td { text-align: right; font-variant-numeric: tabular-nums; }

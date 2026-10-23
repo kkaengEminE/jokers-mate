@@ -21,6 +21,13 @@ import {
   type Action,
 } from "./engine";
 import { label, SYMBOLS, evaluate, bestHandAsync, type Card } from "./poker";
+import {
+  newCampaign,
+  nextRound,
+  finishEnding,
+  campaignOutcome,
+  abandon,
+} from "./campaign";
 import { restore } from "./persistence";
 import "./style.css";
 import { GoldProcession } from "./GoldProcession";
@@ -45,10 +52,10 @@ function initial(): Game {
   try {
     const raw = localStorage.getItem(STORAGE),
       saved = restore(raw);
-    if (saved) return saved;
+    if (saved) return abandon(saved);
     if (raw) localStorage.setItem(STORAGE + "-recovery", raw);
   } catch {}
-  return newLobby();
+  return newCampaign();
 }
 function readRecords(): RecordEntry[] {
   try {
@@ -111,9 +118,16 @@ function PlayingCard({
   );
 }
 function App() {
+  const [emperorTitle, setEmperorTitle] = useState(() => {
+    try {
+      return localStorage.getItem("jokers-mate-emperor-title") === "true";
+    } catch {
+      return false;
+    }
+  });
   const [titleScreen, setTitleScreen] = useState(true);
   const [exited, setExited] = useState(false);
-  const [g, setG] = useState<Game>(initial),
+  const [g, updateG] = useState<Game>(initial),
     [records, setRecords] = useState<RecordEntry[]>(readRecords);
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null),
     [selectedCards, setSelectedCards] = useState<string[]>([]);
@@ -123,6 +137,21 @@ function App() {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [retry, setRetry] = useState(0);
+  const currentGame = useRef(g);
+  function setG(update: React.SetStateAction<Game>) {
+    const next =
+      typeof update === "function" ? update(currentGame.current) : update;
+    try {
+      localStorage.setItem(STORAGE, JSON.stringify(next));
+    } catch {
+      setError(
+        "진행을 저장하지 못했습니다. 저장 공간을 확인한 뒤 다시 시도해 주세요.",
+      );
+      return;
+    }
+    currentGame.current = next;
+    updateG(next);
+  }
   const [aiHand, setAiHand] = useState<Card[]>([]),
     [suggesting, setSuggesting] = useState(false),
     [raise, setRaise] = useState(60);
@@ -147,9 +176,9 @@ function App() {
   const reviewingChess = g.phase === "selection" && !g.chessReviewed;
   const resultBanner = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (reviewingChess && !titleScreen)
+    if ((reviewingChess || g.phase === "result") && !titleScreen)
       resultBanner.current?.scrollIntoView({ block: "start" });
-  }, [reviewingChess, g.id, titleScreen]);
+  }, [reviewingChess, g.id, g.phase, titleScreen]);
   const humanTurn = g.phase === "chess" && c.turn() === "w";
   const status = reviewingChess
     ? `체스 종료 · ${g.chessResult?.reason} · ${g.chessResult?.winner ? sideName(g.chessResult.winner) + " 승리" : "무승부"}`
@@ -361,31 +390,84 @@ function App() {
     () => (chosen.length === 5 ? evaluate(chosen).name : ""),
     [selectedCards, g.identities],
   );
-  const visibleOpponent = g.phase === "result" && !g.betting?.folded;
-  const splitPots = g.economy === "split-15-5";
+  const visibleOpponent =
+    g.phase === "result" && !g.betting?.folded && !g.abandoned;
+  const splitPots = g.economy === "split-15-5" || g.economy === "r3";
+  const outcome = campaignOutcome(g);
+  const storyScreen = g.journey?.screen ?? "play";
+  const storyVisible = ["prologue", "ending", "failed", "complete"].includes(
+    storyScreen,
+  );
+  const canContinue =
+    storyScreen !== "complete" &&
+    storyScreen !== "failed" &&
+    outcome !== "failed";
+  const opponentName =
+    g.journey?.opponent === "emperor"
+      ? "황제 아우렐리온"
+      : "로언 · 정원의 기사";
   const chessAward = (s: Side) =>
     !g.chessResult
       ? 0
       : g.chessResult.winner === s
         ? 30
-        : g.chessResult.winner === null
+        : g.chessResult.winner === null && g.economy !== "r3"
           ? 15
           : 0;
-  const total = g.committed.w + g.committed.b - (splitPots ? 30 : 0);
+  const drawCarry = g.economy === "r3" && g.chessResult?.winner === null;
+  const total =
+    g.committed.w + g.committed.b - (splitPots && !drawCarry ? 30 : 0);
   const vault = (s: Side) =>
     g.settlement ? g.settlement.final[s] : g.banks[s] - g.committed[s];
   function next() {
-    setG(newLobby(g.settlement!.final, g.round + 1));
+    setG(nextRound(g));
     setSelectedCards([]);
     setSelectedSquare(null);
     setError("");
   }
   function restart() {
-    setG(newLobby());
+    setG(newCampaign());
     setSelectedCards([]);
     setSelectedSquare(null);
     setModal(null);
     setError("");
+  }
+  useEffect(() => {
+    function pauseHidden() {
+      if (
+        document.hidden &&
+        !titleScreen &&
+        g.phase !== "lobby" &&
+        g.phase !== "result"
+      )
+        setModal("menu");
+    }
+    document.addEventListener("visibilitychange", pauseHidden);
+    return () => document.removeEventListener("visibilitychange", pauseHidden);
+  }, [g.phase, titleScreen]);
+  function returnToMenu() {
+    if (
+      g.phase !== "lobby" &&
+      g.phase !== "result" &&
+      !confirm(`대국을 포기하면 납부한 ${g.committed.w}G를 잃습니다. 나갈까요?`)
+    )
+      return;
+    setG(abandon(g));
+    setTitleScreen(true);
+    setModal(null);
+  }
+  function endingReturn() {
+    if (outcome === "true-ending") {
+      try {
+        localStorage.setItem("jokers-mate-emperor-title", "true");
+      } catch {
+        setError("칭호를 저장하지 못했습니다. 저장 공간을 확인하세요.");
+        return;
+      }
+      setEmperorTitle(true);
+    }
+    setG(finishEnding(g));
+    setTitleScreen(true);
   }
   function exportRecords() {
     const a = document.createElement("a");
@@ -441,29 +523,39 @@ function App() {
                 : "왕실 정원의 체스판에서, 마지막 다섯 장의 승부까지."}
             </p>
             <div className="title-actions">
-              <button
-                className="primary"
-                onClick={() => {
-                  setTitleScreen(false);
-                  setExited(false);
-                }}
-              >
-                {g.phase === "lobby" ? "시작하기" : "계속하기"}
-              </button>
-              {g.phase !== "lobby" && (
+              {outcome === "failed" && storyScreen !== "failed" && (
                 <button
-                  onClick={() => {
-                    if (
-                      confirm("진행 중인 판을 종료하고 새 게임을 시작할까요?")
-                    ) {
-                      restart();
-                      setTitleScreen(false);
-                    }
-                  }}
+                  className="primary"
+                  onClick={() => setTitleScreen(false)}
                 >
-                  새로 시작하기
+                  패배 결과 확인
                 </button>
               )}
+              {canContinue && (
+                <button
+                  className="primary"
+                  onClick={() => {
+                    setTitleScreen(false);
+                    setExited(false);
+                  }}
+                >
+                  {storyScreen === "prologue" ? "시작하기" : "이어하기"}
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  if (
+                    storyScreen === "prologue" ||
+                    !canContinue ||
+                    confirm("현재 이야기를 지우고 로언부터 새로 시작할까요?")
+                  ) {
+                    restart();
+                    setTitleScreen(false);
+                  }
+                }}
+              >
+                새로하기
+              </button>
               <button onClick={() => setModal("settings")}>설정</button>
               <button onClick={() => setExited(true)}>나가기</button>
             </div>
@@ -473,8 +565,57 @@ function App() {
             </div>
           </section>
         )}
-        <div hidden={titleScreen}>
-          <section className="intro">
+        {!titleScreen && storyVisible && (
+          <section className="title-screen story-screen" aria-label="이야기">
+            <div className="palace-gate" aria-hidden="true">
+              {storyScreen === "prologue" ? "♟ ✉ ♜" : "♛ ♚"}
+            </div>
+            <h1>
+              {storyScreen === "prologue"
+                ? "정원의 초대"
+                : storyScreen === "failed"
+                  ? "꺼진 금고"
+                  : g.journey?.opponent === "emperor"
+                    ? "마지막 왕관"
+                    : "정원의 문 너머"}
+            </h1>
+            <p>
+              {storyScreen === "prologue"
+                ? "카드 복원사 리브에게 이름이 지워진 초대장이 도착했다. 정원의 문지기 로언은 말한다. 체스에서 왕을 지키고, 살아남은 다섯 장으로 너의 이름을 되찾아라."
+                : storyScreen === "failed"
+                  ? "다음 대국에 참가할 금화가 부족합니다. 이번 이야기는 여기서 끝납니다. 새 게임은 로언부터 시작합니다."
+                  : g.journey?.opponent === "emperor"
+                    ? "아우렐리온의 금고가 닫히고 킹과 퀸의 왕관이 내려온다. 리브는 체스 기물과 카드가 쌓인 높은 왕좌를 바라본다. 이름을 되찾으러 온 사람이 이제 새로운 황제가 되었다."
+                    : "로언이 이름 장부를 돌려주었다. 리브의 이름 아래, 또 하나의 초대장이 놓여 있다. 왕실의 마지막 상대, 조커 황제 아우렐리온이 기다린다."}
+            </p>
+            <p className="fine-print">
+              검증용 이야기 · 캐릭터와 최종 일러스트는 추후 확정
+            </p>
+            {storyScreen === "prologue" ? (
+              <button
+                className="primary"
+                onClick={() =>
+                  setG({ ...g, journey: { opponent: "roan", screen: "play" } })
+                }
+              >
+                정원으로 · 참가 확인
+              </button>
+            ) : (
+              <button
+                className="primary"
+                onClick={
+                  storyScreen === "ending"
+                    ? endingReturn
+                    : () => setTitleScreen(true)
+                }
+              >
+                돌아가기
+              </button>
+            )}
+          </section>
+        )}
+        <div hidden={titleScreen || storyVisible}>
+          <section className="intro" hidden={g.phase !== "lobby"}>
             <div>
               <div className="eyebrow">
                 CHESS × POKER <span>EST. IN WONDERLAND</span>
@@ -488,7 +629,7 @@ function App() {
             <div className="round-marker">
               <span>MATCH</span>
               <strong>{String(g.round).padStart(2, "0")}</strong>
-              <small>총 2,000 골드</small>
+              <small>총 {(g.banks.w + g.banks.b).toLocaleString()} 골드</small>
             </div>
           </section>
           {g.phase === "lobby" ? (
@@ -496,7 +637,11 @@ function App() {
               <div className="panel-eyebrow">
                 TAKE YOUR SEAT · ROUND {g.round}
               </div>
-              <h2>두 번의 승부, 하나의 판.</h2>
+              <h2>{opponentName}의 초대</h2>
+              <p>
+                참가 후 창을 닫거나 새로고침하면 미완료 판은 도주 패배가 됩니다.
+                납부액을 잃으며, 완료된 정산은 보존됩니다.
+              </p>
               <p>
                 체스 → 마지막 판 확인 → 포커 → 정산. 한 판을 마치면 새 카드와 새
                 체스판으로 돌아옵니다.
@@ -525,8 +670,8 @@ function App() {
                 <section>
                   <h3>♜ 체스 팟 · 30 G</h3>
                   <p>
-                    각자 15 G. 승자가 30 G를 받고, 무승부는 각자 15 G를
-                    돌려받습니다. 배당은 포커 종료까지 보관하며 이번 포커에 다시
+                    각자 15 G. 승자가 합산 30 G를 받고, 무승부는 30 G가 포커로
+                    이월됩니다. 배당은 포커 종료까지 보관하며 이번 포커에 다시
                     걸 수 없습니다.
                   </p>
                 </section>
@@ -541,7 +686,17 @@ function App() {
               </div>
               <button
                 className="primary full"
-                onClick={() => setG(enterGame(g))}
+                onClick={() => {
+                  try {
+                    const entered = enterGame(g);
+                    localStorage.setItem(STORAGE, JSON.stringify(entered));
+                    setG(entered);
+                  } catch {
+                    setError(
+                      "저장할 수 없어 참가를 중단했습니다. 저장 공간을 확인하세요.",
+                    );
+                  }
+                }}
               >
                 20 G 걸고 {g.round === 1 ? "시작하기" : "다음 판 시작하기"} →
               </button>
@@ -567,8 +722,8 @@ function App() {
                         ["승리", "패배·폴드", "+10 G"],
                         ["패배", "승리", "−10 G"],
                         ["패배", "패배·폴드", "−20 G"],
-                        ["무승부", "승리", "+5 G"],
-                        ["무승부", "패배·폴드", "−5 G"],
+                        ["무승부", "승리", "+20 G"],
+                        ["무승부", "패배·폴드", "−20 G"],
                       ].map((row) => (
                         <tr key={row.join()}>
                           {row.map((cell, i) => (
@@ -594,8 +749,9 @@ function App() {
                     </dd>
                     <dt>폴드</dt>
                     <dd>
-                      포커를 포기합니다. 참가금 5 G와 이미 맞춰진 베팅은 잃지만
-                      체스 배당은 유지됩니다.
+                      포커를 포기합니다. 포커 몫 5 G와 이미 맞춘 추가 베팅을
+                      잃습니다. 확정된 체스 배당은 유지되지만 체스가 무승부면
+                      이월된 15 G도 잃습니다.
                     </dd>
                     <dt>콜</dt>
                     <dd>
@@ -663,7 +819,11 @@ function App() {
 
                 {splitPots && (
                   <div className="stake-summary" aria-label="현재 판돈">
-                    체스 팟 30 G · 포커{" "}
+                    {g.abandoned
+                      ? "도주 패배 · 상대에게 이전된 납부액"
+                      : drawCarry
+                        ? "체스 무승부 이월 · 포커"
+                        : "체스 팟 30 G · 포커"}{" "}
                     {g.phase === "result" ? "정산 팟" : "현재 팟"}{" "}
                     {g.settlement?.pot ?? total} G
                     <span>각자 체스 15 G + 포커 5 G 납부 완료</span>
@@ -704,7 +864,7 @@ function App() {
                       <span className="avatar opponent-avatar">♞</span>
                       <div>
                         <span className="player-name">
-                          정원의 기사 <small>컴퓨터 · 초급</small>
+                          {opponentName} <small>내장 컴퓨터 · 초급</small>
                         </span>
                         <strong>
                           {vault("b").toLocaleString()} <small>G</small>
@@ -859,7 +1019,9 @@ function App() {
                         <span>
                           {g.phase === "selection"
                             ? splitPots
-                              ? "포커 참가금 5 G × 2 · 체스 팟 30 G 별도"
+                              ? drawCarry
+                                ? "체스 무승부 · 전체 40 G 이월"
+                                : "포커 참가금 5 G × 2 · 체스 팟 30 G 별도"
                               : "참가금 20 G × 2"
                             : g.phase === "result"
                               ? `정산 완료 · 잔액 ${g.settlement!.final.w.toLocaleString()} G`
@@ -879,7 +1041,9 @@ function App() {
                             ))}
                           </div>
                           <div className="hand-name">
-                            {evaluate(g.hands.w).name}
+                            {g.hands.w.length === 5
+                              ? evaluate(g.hands.w).name
+                              : "대국 종료"}
                             {g.hands.w.some((x) => x.suit === "J") && (
                               <small className="joker-resolution">
                                 최적 패{" "}
@@ -1207,7 +1371,7 @@ function App() {
                   </section>
                 )}
                 {g.phase === "result" && g.settlement && (
-                  <section className="panel result-panel">
+                  <section className="panel result-panel" ref={resultBanner}>
                     <div className="result-icon">
                       {g.result?.winner === "w"
                         ? "♛"
@@ -1216,11 +1380,13 @@ function App() {
                           : "⚖"}
                     </div>
                     <h2>
-                      {g.result?.winner === "w"
-                        ? "포커 · 당신의 승리"
-                        : g.result?.winner === "b"
-                          ? "포커 · 기사의 승리"
-                          : "무승부"}
+                      {g.abandoned
+                        ? "대국 포기 · 패배"
+                        : g.result?.winner === "w"
+                          ? "포커 · 당신의 승리"
+                          : g.result?.winner === "b"
+                            ? `포커 · ${opponentName} 승리`
+                            : "무승부"}
                     </h2>
                     <p>
                       {g.result?.reason} ·{" "}
@@ -1228,10 +1394,10 @@ function App() {
                       {g.settlement.final.w - g.banks.w} G
                     </p>
                     <p>
-                      체스와 포커가 모두 끝났습니다. 다음 판은 새 체스판과 새
+                      이번 판의 정산이 끝났습니다. 다음 판은 새 체스판과 새
                       카드로 시작하며 참가금 20 G를 다시 냅니다.
                     </p>
-                    {splitPots && (
+                    {splitPots && !drawCarry && !g.abandoned && (
                       <p>
                         체스 순손익{" "}
                         {g.settlement.chessAward!.w - 15 >= 0 ? "+" : ""}
@@ -1246,68 +1412,99 @@ function App() {
                         G
                       </p>
                     )}
-                    <dl>
-                      <div>
-                        <dt>내 시작 잔액</dt>
-                        <dd>{g.banks.w} G</dd>
-                      </div>
-                      <div>
-                        <dt>내 총 투입액 (참가금 포함)</dt>
-                        <dd>{g.committed.w} G</dd>
-                      </div>
-                      <div>
-                        <dt>
-                          {splitPots
-                            ? "내 포커 배당"
-                            : "내 팟 배당 (보호 조정 전)"}
-                        </dt>
-                        <dd>{g.settlement.award.w} G</dd>
-                      </div>
-                      <div>
-                        <dt>내 순손익</dt>
-                        <dd>
-                          {g.settlement.final.w - g.banks.w >= 0 ? "+" : ""}
-                          {g.settlement.final.w - g.banks.w} G
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>포커 경합 팟</dt>
-                        <dd>{g.settlement.pot} G</dd>
-                      </div>
-                      <div>
-                        <dt>내 초과액 반환</dt>
-                        <dd>{g.settlement.returned.w} G</dd>
-                      </div>
-                      <div>
-                        <dt>{splitPots ? "체스 배당" : "20 G 보호 조정"}</dt>
-                        <dd>
-                          {splitPots
-                            ? g.settlement.chessAward!.w
-                            : g.settlement.protection}{" "}
-                          G
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>내 최종 잔액</dt>
-                        <dd>{g.settlement.final.w} G</dd>
-                      </div>
-                    </dl>
-                    {Math.min(g.settlement.final.w, g.settlement.final.b) <
-                    20 ? (
+                    <table className="settlement-ledger">
+                      <caption>한 번의 정산 · 양측 금액</caption>
+                      <thead>
+                        <tr>
+                          <th>항목</th>
+                          <th>나</th>
+                          <th>상대</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[
+                          ["시작 잔액", g.banks],
+                          ["총 납부액", g.committed],
+                          ["미매칭 반환", g.settlement.returned],
+                          [
+                            "체스 배당",
+                            g.settlement.chessAward ?? { w: 0, b: 0 },
+                          ],
+                          [
+                            g.abandoned ? "도주 이전액" : "포커 배당",
+                            g.settlement.award,
+                          ],
+                          ["최종 잔액", g.settlement.final],
+                          [
+                            "순손익",
+                            {
+                              w: g.settlement.final.w - g.banks.w,
+                              b: g.settlement.final.b - g.banks.b,
+                            },
+                          ],
+                        ].map(([name, pair]) => (
+                          <tr key={String(name)}>
+                            <th>{String(name)}</th>
+                            {(["w", "b"] as const).map((side) => (
+                              <td key={side}>
+                                {(pair as Record<Side, number>)[
+                                  side
+                                ].toLocaleString()}{" "}
+                                G
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {!splitPots && (
+                      <p>이전 판 보호 조정: {g.settlement.protection} G</p>
+                    )}
+                    {outcome === "failed" ? (
                       <>
-                        <p className="end-message">
-                          {g.settlement.final.w < 20
-                            ? "참가금이 부족해 전체 게임이 종료되었습니다."
-                            : "상대가 다음 판에 참가할 수 없습니다. 전체 게임 승리!"}
+                        <p>
+                          참가금 20G가 부족합니다. 게임 오버 · 이어하기는
+                          종료됩니다.
                         </p>
-                        <button className="primary full" onClick={restart}>
-                          새 게임 시작
+                        <button
+                          className="primary full"
+                          onClick={() =>
+                            setG({
+                              ...g,
+                              journey: {
+                                opponent: g.journey?.opponent ?? "roan",
+                                screen: "failed",
+                              },
+                            })
+                          }
+                        >
+                          실패 화면 보기
                         </button>
                       </>
-                    ) : (
-                      <button className="primary full" onClick={next}>
-                        다음 판 · 체스부터 시작 →
+                    ) : outcome === "ending" || outcome === "true-ending" ? (
+                      <button
+                        className="primary full"
+                        onClick={() =>
+                          setG({
+                            ...g,
+                            journey: {
+                              opponent: g.journey?.opponent ?? "roan",
+                              screen: "ending",
+                            },
+                          })
+                        }
+                      >
+                        엔딩 보기
                       </button>
+                    ) : (
+                      <>
+                        <button className="primary full" onClick={next}>
+                          계속하기 · 다음 참가 확인
+                        </button>
+                        <button className="full" onClick={returnToMenu}>
+                          돌아가기 · 첫 화면
+                        </button>
+                      </>
                     )}
                     {g.achievements.length > 0 && (
                       <div className="achievement-list">
@@ -1408,8 +1605,8 @@ function App() {
                   <li>
                     <b>입장</b>각 1,000 G로 시작합니다. 새 판마다 체스 15 G +
                     포커 5 G를 미리 냅니다. 체스 팟 30 G는 승자에게, 무승부이면
-                    15 G씩 반환합니다. 체스 배당은 이번 포커에 재사용할 수
-                    없습니다.
+                    전체 40 G를 포커에서 겨룹니다. 체스 배당은 이번 포커에
+                    재사용할 수 없습니다.
                   </li>
                   <li>
                     <b>체스</b>일반 체스처럼 움직입니다. 내 기물의 카드가
@@ -1457,6 +1654,19 @@ function App() {
               <>
                 <div className="panel-eyebrow">YOUR GARDEN</div>
                 <h2>플레이 설정</h2>
+                <section aria-label="캐릭터 소개">
+                  <h3>
+                    리브{" "}
+                    {emperorTitle && (
+                      <span className="emperor-title">♛ 황제 ♚</span>
+                    )}
+                  </h3>
+                  <p>
+                    {emperorTitle
+                      ? "킹과 퀸의 왕관, 체스와 카드로 쌓은 높은 왕좌. 황제 초상은 최종 아트 제작 시 반영합니다."
+                      : "왕실 장부에서 이름을 되찾으러 온 카드 복원사. 현재 검증용 캐릭터입니다."}
+                  </p>
+                </section>
                 <label className="toggle">
                   <span>가능한 이동 표시</span>
                   <input
@@ -1512,12 +1722,10 @@ function App() {
                   </button>
                   <button
                     onClick={() => {
-                      setModal(null);
-                      setTitleScreen(true);
-                      setExited(true);
+                      returnToMenu();
                     }}
                   >
-                    Exit · 저장된 상태로 일시정지
+                    메인으로 · 진행 중이면 대국 포기
                   </button>
                 </div>
                 <small>
@@ -1570,4 +1778,25 @@ function App() {
     </div>
   );
 }
-createRoot(document.getElementById("root")!).render(<App />);
+const root = createRoot(document.getElementById("root")!);
+if (navigator.locks) {
+  void navigator.locks.request(
+    STORAGE + "-active",
+    { ifAvailable: true },
+    async (lock) => {
+      if (!lock) {
+        root.render(
+          <main className="title-screen">
+            <h1>다른 창에서 대국 중입니다</h1>
+            <p>
+              기존 게임 창을 사용하세요. 이 창에서는 저장을 변경하지 않습니다.
+            </p>
+          </main>,
+        );
+        return;
+      }
+      root.render(<App />);
+      await new Promise<void>(() => {});
+    },
+  );
+} else root.render(<App />);

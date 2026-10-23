@@ -86,6 +86,6 @@ it("restores old untagged saves with old settlement, new rounds opt into split",
   g = act(g, "w", { type: "fold" });
   expect(g.settlement!.pot).toBe(40);
   expect(restore(JSON.stringify(g))).toEqual(g);
-  expect(newGame(g.settlement!.final, 2).economy).toBe(split);
+  expect(newGame(g.settlement!.final, 2).economy).toBe("r3");
   expect(restore(JSON.stringify({ ...g, economy: split }))).toBeNull();
 });

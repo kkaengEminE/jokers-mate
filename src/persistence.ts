@@ -12,12 +12,22 @@ export function restore(raw: string | null): Game | null {
     const g = JSON.parse(raw) as Game;
     if (
       g.version !== 2 ||
-      (g.economy !== undefined && g.economy !== "split-15-5") ||
+      (g.economy !== undefined &&
+        g.economy !== "split-15-5" &&
+        g.economy !== "r3") ||
       typeof g.id !== "string" ||
       !Number.isInteger(g.round) ||
       g.round < 1 ||
       !Array.isArray(g.moves) ||
       !["lobby", "chess", "selection", "betting", "result"].includes(g.phase)
+    )
+      return null;
+    if (
+      g.journey &&
+      (!["roan", "emperor"].includes(g.journey.opponent) ||
+        !["play", "prologue", "ending", "failed", "complete"].includes(
+          g.journey.screen,
+        ))
     )
       return null;
     const c = chessOf(g),
@@ -46,7 +56,12 @@ export function restore(raw: string | null): Game | null {
       g.achievements.some((x) => typeof x !== "string")
     )
       return null;
-    if (!g.banks || !g.committed || g.banks.w + g.banks.b !== 2000) return null;
+    if (
+      !g.banks ||
+      !g.committed ||
+      !Number.isSafeInteger(g.banks.w + g.banks.b)
+    )
+      return null;
     for (const s of ["w", "b"] as const)
       if (
         !Number.isSafeInteger(g.banks[s]) ||
@@ -56,9 +71,39 @@ export function restore(raw: string | null): Game | null {
         g.committed[s] > g.banks[s]
       )
         return null;
+    if (g.abandoned) {
+      if (
+        g.economy !== "r3" ||
+        g.phase !== "result" ||
+        g.result?.winner !== "b" ||
+        !g.settlement ||
+        !Array.isArray(g.hands?.w) ||
+        !Array.isArray(g.hands?.b) ||
+        ![0, 5].includes(g.hands.w.length) ||
+        ![0, 5].includes(g.hands.b.length)
+      )
+        return null;
+      const expected = {
+        w: g.banks.w - g.committed.w,
+        b: g.banks.b + g.committed.w,
+      };
+      if (
+        JSON.stringify(g.settlement) !==
+        JSON.stringify({
+          final: expected,
+          returned: { w: 0, b: g.committed.b },
+          award: { w: 0, b: g.committed.w },
+          chessAward: { w: 0, b: 0 },
+          pot: g.committed.w,
+          protection: 0,
+        })
+      )
+        return null;
+      return g;
+    }
     if (g.phase === "lobby") {
       if (
-        g.economy !== "split-15-5" ||
+        (g.economy !== "split-15-5" && g.economy !== "r3") ||
         g.moves.length ||
         g.committed.w ||
         g.committed.b ||
