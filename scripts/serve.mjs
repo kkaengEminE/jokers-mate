@@ -24,7 +24,7 @@ const server = http.createServer(async (req, res) => {
         "Content-Type": "application/json",
         "Cache-Control": "no-store",
       });
-      res.end(JSON.stringify({ app: "jokers-gambit", pid: process.pid }));
+      res.end(JSON.stringify({ app: "jokers-mate", pid: process.pid }));
       return;
     }
     if (req.method !== "GET" && req.method !== "HEAD") {
@@ -55,6 +55,6 @@ server.on("error", (error) => {
   process.exit(1);
 });
 server.listen(port, "127.0.0.1", () =>
-  console.log(`Joker’s Gambit: http://127.0.0.1:${port}/`),
+  console.log(`Joker’s Mate: http://127.0.0.1:${port}/`),
 );
 process.on("SIGTERM", () => server.close(() => process.exit(0)));

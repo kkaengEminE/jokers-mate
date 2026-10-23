@@ -395,7 +395,7 @@ function App() {
       }),
     );
     a.href = url;
-    a.download = "jokers-gambit-records.json";
+    a.download = "jokers-mate-records.json";
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -405,7 +405,7 @@ function App() {
         <a className="wordmark" href="#" onClick={(e) => e.preventDefault()}>
           <span className="brand-icon">♜</span>
           <span>
-            JOKER’S GAMBIT<small>THE ROYAL GARDEN</small>
+            JOKER’S MATE<small>THE ROYAL GARDEN</small>
           </span>
         </a>
         <nav aria-label="메뉴">
@@ -433,7 +433,7 @@ function App() {
             <h1>
               JOKER’S
               <br />
-              GAMBIT
+              MATE
             </h1>
             <p>
               {exited
@@ -948,7 +948,7 @@ function App() {
               </section>
               <aside className="sidebar">
                 <section className="panel overview">
-                  <div className="panel-eyebrow">THE GAMBIT</div>
+                  <div className="panel-eyebrow">THE MATCH</div>
                   <h2>
                     {reviewingChess
                       ? "체스 결과를 확인하세요."
@@ -1347,7 +1347,7 @@ function App() {
         <footer>
           <span>♠ ♦ ♥ ♣</span>
           <p>
-            JOKER’S GAMBIT <i>·</i> 가상 골드만 사용하는 전략 게임
+            JOKER’S MATE <i>·</i> 가상 골드만 사용하는 전략 게임
           </p>
           <small>PROTOTYPE · 0.2</small>
         </footer>
@@ -1482,7 +1482,7 @@ function App() {
             )}
             {modal === "menu" && (
               <>
-                <div className="panel-eyebrow">JOKER’S GAMBIT</div>
+                <div className="panel-eyebrow">JOKER’S MATE</div>
                 <h2>잠시 정원을 거닐까요?</h2>
                 <p>진행 상황이 이 브라우저에 저장됩니다.</p>
                 <div className="menu-actions">

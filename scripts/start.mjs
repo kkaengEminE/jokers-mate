@@ -16,7 +16,7 @@ async function health() {
   }
 }
 const existing = await health();
-if (existing?.app === "jokers-gambit") {
+if (["jokers-mate", "jokers-gambit"].includes(existing?.app)) {
   console.log(`게임이 실행 중입니다: ${url}/`);
   process.exit(0);
 }
@@ -38,7 +38,7 @@ child.unref();
 await log.close();
 for (let i = 0; i < 30; i++) {
   const state = await health();
-  if (state?.app === "jokers-gambit") {
+  if (["jokers-mate", "jokers-gambit"].includes(state?.app)) {
     console.log(`게임 실행 완료: ${url}/\n종료: npm run stop`);
     process.exit(0);
   }

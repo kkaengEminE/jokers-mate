@@ -1,12 +1,14 @@
+> 이름·도메인 표기와 캠페인의 임시 범위: [브랜드 및 확장 메모](docs/24_BRAND_AND_SCOPE.md)
+
 > **최신 설계:** [정산 R3](docs/21_ECONOMY_CORRECTION.md) · [게임/엔딩 흐름](docs/22_CAMPAIGN_FLOW.md) · [오류·변경 대장](docs/CHANGE_REGISTER.md). 이전15/25 설명은 폐기. 런타임 이행 전입니다.
 
-> **재설계 진행 중:** 최신 기준은 [제품 재설계](docs/20_PRODUCT_REDESIGN.md). 아래 실행 프로토타입은 아직 이전30/10 경제이며 최신15G확보 규칙과 다릅니다.
+> **구현 상태:** 실행 프로토타입은 결정적 체스 30G/포커 10G를 사용합니다. R3의 체스 무승부 이월 및 캠페인·엔딩 흐름은 아직 구현 전입니다. 문서20의 전체15/25 계산은 폐기했습니다.
 
 # 현행 규칙과 요구 대조
 
 [현재 규칙](docs/CURRENT_RULES.md) · [요구 재점검/미완료 항목](docs/19_REQUIREMENTS_AUDIT.md)
 
-# Joker’s Gambit · The Royal Garden
+# Joker’s Mate · The Royal Garden
 
 체스의 한 수, 포커의 한 장. **플레이 가능한 브라우저 2D 프로토타입 v0.2**입니다.
 
@@ -62,4 +64,4 @@ macOS에서는 [START_GAME.command](START_GAME.command)를 실행해 설치 확�
 
 이전 개발 미리보기는 컴퓨터 차례가 되면 별도 Worker 파일을 불러왔습니다. 서버가 끊어진 채 화면만 남으면 파일을 로드하지 못하고 멈췄습니다. 0.2에서는 상대 로직을 초기 게임 번들에 포함하고 Worker 의존성을 제거했습니다. 포커 조합 계산은 화면이 응답할 수 있도록 나누어 실행합니다. 오래된 화면이라면 새로고침하면 저장된 판을 이어갑니다.
 
-저장소: [kkaengEminE/jokers-gambit](https://github.com/kkaengEminE/jokers-gambit) · 비공개
+저장소: [kkaengEminE/jokers-mate](https://github.com/kkaengEminE/jokers-mate) · 비공개
