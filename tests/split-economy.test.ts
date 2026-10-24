@@ -1,7 +1,9 @@
+const newGame = (...args: Parameters<typeof basenewGame>) =>
+  basenewGame(args[0], args[1], "r3");
 import { expect, it } from "vitest";
 import {
   settle,
-  newGame,
+  newGame as basenewGame,
   applyMove,
   startBetting,
   survivors,

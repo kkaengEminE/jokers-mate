@@ -38,7 +38,7 @@ it("matches unequal emperor all-ins and conserves the dynamic supply", () => {
 it("abandonment charges once, restores and records without completed chess", () => {
   const g = enterGame(newCampaign());
   const lost = abandon(g);
-  expect(lost.settlement!.final).toEqual({ w: 980, b: 1020 });
+  expect(lost.settlement!.final).toEqual({ w: 950, b: 1050 });
   expect(abandon(lost)).toEqual(lost);
   expect(restore(JSON.stringify(lost))).toEqual(lost);
   expect(makeRecord(lost).chess).toContain("미완료");
@@ -73,13 +73,13 @@ it("only total Roan victory unlocks emperor, player money carries over", () => {
 });
 it("bankruptcy boundary and true ending prohibit another round", () => {
   for (const opponent of ["roan", "emperor"] as const) {
-    expect(campaignOutcome(result(19, 2000, opponent))).toBe("failed");
-    expect(() => nextRound(result(19, 2000, opponent))).toThrow();
-    expect(() => finishEnding(result(19, 2000, opponent))).toThrow();
-    expect(campaignOutcome(result(20, 20, opponent))).toBe("round");
+    expect(campaignOutcome(result(49, 2000, opponent))).toBe("failed");
+    expect(() => nextRound(result(49, 2000, opponent))).toThrow();
+    expect(() => finishEnding(result(49, 2000, opponent))).toThrow();
+    expect(campaignOutcome(result(50, 50, opponent))).toBe("round");
   }
-  expect(campaignOutcome(result(1000, 19, "emperor"))).toBe("true-ending");
-  expect(finishEnding(result(1000, 19, "emperor")).journey!.screen).toBe(
+  expect(campaignOutcome(result(1000, 49, "emperor"))).toBe("true-ending");
+  expect(finishEnding(result(1000, 49, "emperor")).journey!.screen).toBe(
     "complete",
   );
   expect(newCampaign().journey).toEqual({

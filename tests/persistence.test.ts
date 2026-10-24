@@ -1,7 +1,9 @@
+const newGame = (...args: Parameters<typeof basenewGame>) =>
+  basenewGame(args[0], args[1], "r3");
 import { it, expect } from "vitest";
 import { restore } from "../src/persistence";
 import {
-  newGame,
+  newGame as basenewGame,
   applyMove,
   chessOf,
   survivors,

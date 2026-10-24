@@ -27,7 +27,7 @@ export interface Betting {
 }
 export interface Game {
   version: 2;
-  economy?: "split-15-5" | "r3";
+  economy?: "split-15-5" | "r3" | "r4";
   journey?: {
     opponent: "roan" | "emperor";
     screen: "play" | "prologue" | "ending" | "failed" | "complete";
@@ -63,6 +63,11 @@ export interface RecordEntry {
   captured: Record<Side, Card[]>;
   settlement: Settlement;
 }
+export const entryFee = (economy?: Game["economy"]) =>
+  economy === "r4" ? 50 : 20;
+export const chessPool = (economy?: Game["economy"]) =>
+  economy === "r4" ? 40 : 30;
+export const CURRENT_ENTRY = 50;
 export function shuffle<T>(a: T[], rng = Math.random): T[] {
   a = [...a];
   for (let i = a.length - 1; i > 0; i--) {
@@ -71,8 +76,13 @@ export function shuffle<T>(a: T[], rng = Math.random): T[] {
   }
   return a;
 }
-export function newGame(banks: Pair = { w: 1000, b: 1000 }, round = 1): Game {
-  if (Math.min(banks.w, banks.b) < 20) throw new Error("참가금이 부족합니다.");
+export function newGame(
+  banks: Pair = { w: 1000, b: 1000 },
+  round = 1,
+  economy: Game["economy"] = "r4",
+): Game {
+  if (Math.min(banks.w, banks.b) < entryFee(economy))
+    throw new Error("참가금이 부족합니다.");
   const kings = shuffle(deck().filter((c) => c.rank === 13)).slice(0, 2),
     queens = shuffle(deck().filter((c) => c.rank === 12)).slice(0, 2);
   const remaining = shuffle(
@@ -90,7 +100,7 @@ export function newGame(banks: Pair = { w: 1000, b: 1000 }, round = 1): Game {
         identities[piece.square] = remaining.pop()!;
   return {
     version: 2,
-    economy: "r3",
+    economy,
     id: crypto.randomUUID(),
     round,
     phase: "chess",
@@ -98,7 +108,7 @@ export function newGame(banks: Pair = { w: 1000, b: 1000 }, round = 1): Game {
     identities,
     captured: { w: [], b: [] },
     banks: { ...banks },
-    committed: { w: 20, b: 20 },
+    committed: { w: entryFee(economy), b: entryFee(economy) },
     chessResult: null,
     hands: { w: [], b: [] },
     betting: null,
@@ -107,9 +117,13 @@ export function newGame(banks: Pair = { w: 1000, b: 1000 }, round = 1): Game {
     achievements: [],
   };
 }
-export function newLobby(banks: Pair = { w: 1000, b: 1000 }, round = 1): Game {
+export function newLobby(
+  banks: Pair = { w: 1000, b: 1000 },
+  round = 1,
+  economy: Game["economy"] = "r4",
+): Game {
   return {
-    ...newGame(banks, round),
+    ...newGame(banks, round, economy),
     phase: "lobby",
     committed: { w: 0, b: 0 },
   };
@@ -117,7 +131,11 @@ export function newLobby(banks: Pair = { w: 1000, b: 1000 }, round = 1): Game {
 export function enterGame(g: Game): Game {
   if (g.phase !== "lobby" || g.committed.w || g.committed.b)
     throw new Error("이미 참가한 판입니다.");
-  return { ...g, phase: "chess", committed: { w: 20, b: 20 } };
+  return {
+    ...g,
+    phase: "chess",
+    committed: { w: entryFee(g.economy), b: entryFee(g.economy) },
+  };
 }
 export function chessOf(game: Pick<Game, "moves">): Chess {
   const c = new Chess();
@@ -214,25 +232,36 @@ export function settle(
     if (
       !Number.isSafeInteger(banks[s]) ||
       !Number.isSafeInteger(c[s]) ||
-      banks[s] < 20 ||
-      c[s] < 20 ||
+      banks[s] < entryFee(economy) ||
+      c[s] < entryFee(economy) ||
       c[s] > banks[s]
     )
       throw new Error("유효하지 않은 원장");
   const supply = banks.w + banks.b;
-  if (economy !== "r3" && supply !== 2000)
+  if (economy !== "r3" && economy !== "r4" && supply !== 2000)
     throw new Error("이전 원장의 총 골드 불일치");
   if (!Number.isSafeInteger(supply)) throw new Error("총 골드 범위 오류");
-  if (economy === "split-15-5" || economy === "r3") {
-    if (economy === "r3" && !pokerWinner)
+  if (economy === "split-15-5" || economy === "r3" || economy === "r4") {
+    if ((economy === "r3" || economy === "r4") && !pokerWinner)
       throw new Error("포커 승자가 필요합니다.");
     const m = Math.min(c.w, c.b);
-    const drawCarry = economy === "r3" && chessWinner === null;
-    const pot = 2 * m - (drawCarry ? 0 : 30);
+    const drawCarry =
+      (economy === "r3" || economy === "r4") && chessWinner === null;
+    const pot = 2 * m - (drawCarry ? 0 : chessPool(economy));
     const returned = { w: c.w - m, b: c.b - m };
     const chessAward = {
-      w: chessWinner === "w" ? 30 : chessWinner === null && !drawCarry ? 15 : 0,
-      b: chessWinner === "b" ? 30 : chessWinner === null && !drawCarry ? 15 : 0,
+      w:
+        chessWinner === "w"
+          ? chessPool(economy)
+          : chessWinner === null && !drawCarry
+            ? 15
+            : 0,
+      b:
+        chessWinner === "b"
+          ? chessPool(economy)
+          : chessWinner === null && !drawCarry
+            ? 15
+            : 0,
     };
     const award = {
       w: pokerWinner === "w" ? pot : pokerWinner === null ? pot / 2 : 0,
@@ -378,7 +407,7 @@ export function act(g: Game, side: Side, action: Action): Game {
     } else b.acted.push(side);
     n.committed[side] = target;
     b.log.push(
-      `${sideName(side)} · ${action.type === "allin" ? "올인" : action.type === "call" ? "콜" : high === 20 ? "베트" : "레이즈"} (+${target - g.committed[side]})`,
+      `${sideName(side)} · ${action.type === "allin" ? "올인" : action.type === "call" ? "콜" : high === entryFee(g.economy) ? "베트" : "레이즈"} (+${target - g.committed[side]})`,
     );
   }
   b.turn = opp;
@@ -441,13 +470,13 @@ function finish(n: Game): Game {
     )
   )
     n.achievements.push("블러프 성공 · 낮은 족보로 폴드 유도");
-  if (n.settlement.final.w < 20)
+  if (n.settlement.final.w < CURRENT_ENTRY)
     n.achievements.push("다음 기회를 기다리며 · 파산");
   if (n.chessResult!.winner === "b" && winner === "w")
     n.achievements.push(
       n.economy ? "포커 설욕 · 체스 패배 후 포커 승리" : "역전의 한 장",
     );
-  if (n.settlement.final.b < 20) n.achievements.push("정원의 주인");
+  if (n.settlement.final.b < CURRENT_ENTRY) n.achievements.push("정원의 주인");
   n.achievements = [...new Set(n.achievements)];
   return n;
 }

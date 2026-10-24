@@ -1,7 +1,9 @@
+const newGame = (...args: Parameters<typeof basenewGame>) =>
+  basenewGame(args[0], args[1], "r3");
 import { describe, it, expect } from "vitest";
 import { Chess } from "chess.js";
 import {
-  newGame,
+  newGame as basenewGame,
   chessOf,
   applyMove,
   chessEnd,

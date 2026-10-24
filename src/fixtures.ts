@@ -1,6 +1,7 @@
 // Development-only browser QA. Imported only behind Vite's DEV guard.
 import {
   newGame,
+  newLobby,
   applyMove,
   startBetting,
   chessOf,
@@ -10,6 +11,7 @@ import {
   type Game,
 } from "./engine";
 export function fixture(name: string): Game {
+  if (name === "r4-lobby") return newLobby();
   let g = newGame();
   for (const m of ["f3", "e5", "g4", "Qh4#"]) g = applyMove(g, m);
   if (name === "selection") return g;
@@ -35,12 +37,12 @@ export function fixture(name: string): Game {
       g.committed,
       g.chessResult.winner,
       g.result.winner,
-      "r3",
+      "r4",
     );
     if (emperor && !failed) {
       g.banks = { w: 2_100_000_000, b: 1000 };
       g.committed = { w: 1000, b: 1000 };
-      g.settlement = settle(g.banks, g.committed, "w", "w", "r3");
+      g.settlement = settle(g.banks, g.committed, "w", "w", "r4");
     }
   }
   return g;

@@ -1,4 +1,11 @@
-import { chessOf, chessEnd, survivors, settle, type Game } from "./engine";
+import {
+  entryFee,
+  chessOf,
+  chessEnd,
+  survivors,
+  settle,
+  type Game,
+} from "./engine";
 import { deck, type Card } from "./poker";
 const canonical = new Map(deck().map((c) => [c.id, c]));
 const validCard = (c: Card) =>
@@ -14,7 +21,8 @@ export function restore(raw: string | null): Game | null {
       g.version !== 2 ||
       (g.economy !== undefined &&
         g.economy !== "split-15-5" &&
-        g.economy !== "r3") ||
+        g.economy !== "r3" &&
+        g.economy !== "r4") ||
       typeof g.id !== "string" ||
       !Number.isInteger(g.round) ||
       g.round < 1 ||
@@ -66,14 +74,14 @@ export function restore(raw: string | null): Game | null {
       if (
         !Number.isSafeInteger(g.banks[s]) ||
         !Number.isSafeInteger(g.committed[s]) ||
-        g.banks[s] < 20 ||
-        g.committed[s] < (g.phase === "lobby" ? 0 : 20) ||
+        g.banks[s] < entryFee(g.economy) ||
+        g.committed[s] < (g.phase === "lobby" ? 0 : entryFee(g.economy)) ||
         g.committed[s] > g.banks[s]
       )
         return null;
     if (g.abandoned) {
       if (
-        g.economy !== "r3" ||
+        (g.economy !== "r3" && g.economy !== "r4") ||
         g.phase !== "result" ||
         g.result?.winner !== "b" ||
         !g.settlement ||
@@ -103,7 +111,9 @@ export function restore(raw: string | null): Game | null {
     }
     if (g.phase === "lobby") {
       if (
-        (g.economy !== "split-15-5" && g.economy !== "r3") ||
+        (g.economy !== "split-15-5" &&
+          g.economy !== "r3" &&
+          g.economy !== "r4") ||
         g.moves.length ||
         g.committed.w ||
         g.committed.b ||
@@ -129,8 +139,8 @@ export function restore(raw: string | null): Game | null {
         g.settlement ||
         g.hands.w.length ||
         g.hands.b.length ||
-        g.committed.w !== 20 ||
-        g.committed.b !== 20
+        g.committed.w !== entryFee(g.economy) ||
+        g.committed.b !== entryFee(g.economy)
       )
         return null;
     } else {

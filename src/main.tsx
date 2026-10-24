@@ -3,6 +3,9 @@ import { createRoot } from "react-dom/client";
 import type { Square } from "chess.js";
 import {
   newLobby,
+  entryFee,
+  chessPool,
+  CURRENT_ENTRY,
   enterGame,
   chessOf,
   applyMove,
@@ -392,7 +395,11 @@ function App() {
   );
   const visibleOpponent =
     g.phase === "result" && !g.betting?.folded && !g.abandoned;
-  const splitPots = g.economy === "split-15-5" || g.economy === "r3";
+  const splitPots = !!g.economy;
+  const fee = entryFee(g.economy),
+    pool = chessPool(g.economy),
+    chessShare = pool / 2,
+    pokerShare = fee - chessShare;
   const outcome = campaignOutcome(g);
   const storyScreen = g.journey?.screen ?? "play";
   const storyVisible = ["prologue", "ending", "failed", "complete"].includes(
@@ -410,13 +417,15 @@ function App() {
     !g.chessResult
       ? 0
       : g.chessResult.winner === s
-        ? 30
-        : g.chessResult.winner === null && g.economy !== "r3"
+        ? pool
+        : g.chessResult.winner === null && g.economy === "split-15-5"
           ? 15
           : 0;
-  const drawCarry = g.economy === "r3" && g.chessResult?.winner === null;
+  const drawCarry =
+    (g.economy === "r3" || g.economy === "r4") &&
+    g.chessResult?.winner === null;
   const total =
-    g.committed.w + g.committed.b - (splitPots && !drawCarry ? 30 : 0);
+    g.committed.w + g.committed.b - (splitPots && !drawCarry ? pool : 0);
   const vault = (s: Side) =>
     g.settlement ? g.settlement.final[s] : g.banks[s] - g.committed[s];
   function next() {
@@ -638,6 +647,12 @@ function App() {
                 TAKE YOUR SEAT · ROUND {g.round}
               </div>
               <h2>{opponentName}의 초대</h2>
+              {g.economy !== "r4" && (
+                <p>
+                  이전 규칙으로 저장된 판입니다. 이 판은 참가금 {fee} G로 마치고
+                  다음 판부터 50 G·40/60 규칙을 적용합니다.
+                </p>
+              )}
               <p>
                 참가 후 창을 닫거나 새로고침하면 미완료 판은 도주 패배가 됩니다.
                 납부액을 잃으며, 완료된 정산은 보존됩니다.
@@ -657,30 +672,30 @@ function App() {
                 </article>
                 <article>
                   <span>이번 판에 걸 골드</span>
-                  <strong>20 G</strong>
-                  <small>체스 15 G + 포커 5 G · 수수료 없음</small>
+                  <strong>{fee} G</strong>
+                  <small>한 번만 납부 · 수수료 없음</small>
                 </article>
                 <article>
                   <span>시작 후 내 금고</span>
-                  <strong>{(g.banks.w - 20).toLocaleString()} G</strong>
-                  <small>상대도 20 G를 냅니다</small>
+                  <strong>{(g.banks.w - fee).toLocaleString()} G</strong>
+                  <small>상대도 {fee} G를 냅니다</small>
                 </article>
               </div>
               <div className="lobby-columns">
                 <section>
-                  <h3>♜ 체스 팟 · 30 G</h3>
+                  <h3>♜ 체스 합산 배당 · {pool} G</h3>
                   <p>
-                    각자 15 G. 승자가 합산 30 G를 받고, 무승부는 30 G가 포커로
+                    승자가 합산 {pool} G를 받고, 무승부는 이 금액이 포커로
                     이월됩니다. 배당은 포커 종료까지 보관하며 이번 포커에 다시
                     걸 수 없습니다.
                   </p>
                 </section>
                 <section>
-                  <h3>♠ 포커 기본 팟 · 10 G</h3>
+                  <h3>♠ 포커 합산 배당 · {fee * 2 - pool} G</h3>
                   <p>
-                    각자 5 G. 생존 카드 중 다섯 장으로 겨룹니다. 추가 베팅으로
-                    팟을 키울 수 있고, 족보·숫자·무늬 순서로 결정한 승자가 유효
-                    팟을 받습니다.
+                    전환 시 추가 참가금 없이 생존 카드 다섯 장으로 겨룹니다.
+                    추가 베팅으로 팟을 키울 수 있고, 족보·숫자·무늬 순서로
+                    결정한 승자가 유효 팟을 받습니다.
                   </p>
                 </section>
               </div>
@@ -698,11 +713,11 @@ function App() {
                   }
                 }}
               >
-                20 G 걸고 {g.round === 1 ? "시작하기" : "다음 판 시작하기"} →
+                {fee} G 걸고 {g.round === 1 ? "시작하기" : "다음 판 시작하기"} →
               </button>
               <p className="fine-print">
-                가상 골드만 사용합니다. 최종 잔액 20 G 보장은 없으며, 정산 후 20
-                G 미만이면 다음 판에 참가할 수 없습니다.
+                가상 골드만 사용합니다. 최소 잔액 보장은 없습니다. 다음 판
+                참가금은 {CURRENT_ENTRY} G이며 그 미만이면 파산합니다.
               </p>
               <div className="lobby-columns">
                 <section>
@@ -718,12 +733,28 @@ function App() {
                     </thead>
                     <tbody>
                       {[
-                        ["승리", "승리", "+20 G"],
-                        ["승리", "패배·폴드", "+10 G"],
-                        ["패배", "승리", "−10 G"],
-                        ["패배", "패배·폴드", "−20 G"],
-                        ["무승부", "승리", "+20 G"],
-                        ["무승부", "패배·폴드", "−20 G"],
+                        ["승리", "승리", `+${fee} G`],
+                        [
+                          "승리",
+                          "패배·폴드",
+                          `${pool - fee > 0 ? "+" : ""}${pool - fee} G`,
+                        ],
+                        [
+                          "패배",
+                          "승리",
+                          `${fee - pool > 0 ? "+" : ""}${fee - pool} G`,
+                        ],
+                        ["패배", "패배·폴드", `−${fee} G`],
+                        [
+                          "무승부",
+                          "승리",
+                          `+${g.economy === "split-15-5" ? pokerShare : fee} G`,
+                        ],
+                        [
+                          "무승부",
+                          "패배·폴드",
+                          `−${g.economy === "split-15-5" ? pokerShare : fee} G`,
+                        ],
                       ].map((row) => (
                         <tr key={row.join()}>
                           {row.map((cell, i) => (
@@ -734,9 +765,10 @@ function App() {
                     </tbody>
                   </table>
                   <p className="fine-print">
-                    포커는 ♠ → ♦ → ♥ → ♣ 순서까지 비교해 승자를 정합니다. 체스에
-                    더 큰 보상을 주므로 체스에서 이기고 포커를 폴드해도 기본
-                    판에서는 +10 G가 남습니다.
+                    포커는 ♠ → ♦ → ♥ → ♣ 순서까지 비교해 승자를 정합니다. 체스
+                    승리 뒤 포커 폴드의 기본 손익은 {pool - fee} G입니다. 새
+                    규칙은 잔액을 보충하지 않으며 5판마다 참가금을 올리지
+                    않습니다.
                   </p>
                 </section>
                 <section>
@@ -749,9 +781,9 @@ function App() {
                     </dd>
                     <dt>폴드</dt>
                     <dd>
-                      포커를 포기합니다. 포커 몫 5 G와 이미 맞춘 추가 베팅을
-                      잃습니다. 확정된 체스 배당은 유지되지만 체스가 무승부면
-                      이월된 15 G도 잃습니다.
+                      포커를 포기합니다. 개인 포커 몫 {pokerShare} G와 이미 맞춘
+                      추가 베팅을 잃습니다. 확정된 체스 배당은 유지되지만 체스가
+                      무승부면 이월된 체스 몫 {chessShare} G도 잃습니다.
                     </dd>
                     <dt>콜</dt>
                     <dd>
@@ -787,7 +819,7 @@ function App() {
                     <span className="entry-cart">
                       ● ● ●<small>◉━━◉</small>
                     </span>
-                    <strong>양쪽 금고 → 중앙 판돈 · 각 20 G</strong>
+                    <strong>양쪽 금고 → 중앙 판돈 · 각 {fee} G</strong>
                   </div>
                 )}
 
@@ -823,10 +855,10 @@ function App() {
                       ? "도주 패배 · 상대에게 이전된 납부액"
                       : drawCarry
                         ? "체스 무승부 이월 · 포커"
-                        : "체스 팟 30 G · 포커"}{" "}
+                        : `체스 배당 ${pool} G · 포커`}{" "}
                     {g.phase === "result" ? "정산 팟" : "현재 팟"}{" "}
                     {g.settlement?.pot ?? total} G
-                    <span>각자 체스 15 G + 포커 5 G 납부 완료</span>
+                    <span>각자 {fee} G 납부 완료 · 추가 참가금 없음</span>
                   </div>
                 )}
 
@@ -1020,8 +1052,8 @@ function App() {
                           {g.phase === "selection"
                             ? splitPots
                               ? drawCarry
-                                ? "체스 무승부 · 전체 40 G 이월"
-                                : "포커 참가금 5 G × 2 · 체스 팟 30 G 별도"
+                                ? `체스 무승부 · 전체 ${fee * 2} G 이월`
+                                : `포커 기본 ${fee * 2 - pool} G · 체스 배당 ${pool} G 별도`
                               : "참가금 20 G × 2"
                             : g.phase === "result"
                               ? `정산 완료 · 잔액 ${g.settlement!.final.w.toLocaleString()} G`
@@ -1159,7 +1191,7 @@ function App() {
                         : "어느 쪽이든 5기물이 남으면 체스가 종료됩니다."}
                       <small>
                         {splitPots
-                          ? `체스 팟 30 G · ${g.chessResult ? `내 확정 배당 ${chessAward("w")} G (포커 종료 후 지급)` : "결과에 따라 배당"}. 최종 20 G 보장은 없습니다.`
+                          ? `체스 배당 ${pool} G · ${g.chessResult ? `내 확정 배당 ${chessAward("w")} G (포커 종료 후 지급)` : "결과에 따라 배당"}. 최소 잔액 보장은 없습니다.`
                           : "기존 판 규칙: 체스 승자는 최종 잔액 20 G를 보호받습니다."}
                       </small>
                     </p>
@@ -1288,11 +1320,11 @@ function App() {
                     <div className="bet-summary">
                       <span>
                         포커 투입{" "}
-                        <b>{g.committed.w - (splitPots ? 15 : 0)} G</b>
+                        <b>{g.committed.w - (splitPots ? chessShare : 0)} G</b>
                       </span>
                       <span>
                         상대 포커 투입{" "}
-                        <b>{g.committed.b - (splitPots ? 15 : 0)} G</b>
+                        <b>{g.committed.b - (splitPots ? chessShare : 0)} G</b>
                       </span>
                       <span>
                         콜 필요 <b>{Math.min(options.owed, options.left)} G</b>
@@ -1321,16 +1353,17 @@ function App() {
                       포커 총 투입액으로 베트 / 레이즈
                       <input
                         type="number"
-                        min={options.minTotal - (splitPots ? 15 : 0)}
-                        max={options.maxTotal - (splitPots ? 15 : 0)}
+                        min={options.minTotal - (splitPots ? chessShare : 0)}
+                        max={options.maxTotal - (splitPots ? chessShare : 0)}
                         step="1"
                         value={
                           Math.max(raise, options.minTotal) -
-                          (splitPots ? 15 : 0)
+                          (splitPots ? chessShare : 0)
                         }
                         onChange={(e) =>
                           setRaise(
-                            Number(e.target.value) + (splitPots ? 15 : 0),
+                            Number(e.target.value) +
+                              (splitPots ? chessShare : 0),
                           )
                         }
                         disabled={!options.raise}
@@ -1395,20 +1428,27 @@ function App() {
                     </p>
                     <p>
                       이번 판의 정산이 끝났습니다. 다음 판은 새 체스판과 새
-                      카드로 시작하며 참가금 20 G를 다시 냅니다.
+                      카드로 시작하며 참가금 {CURRENT_ENTRY} G를 다시 냅니다.
                     </p>
                     {splitPots && !drawCarry && !g.abandoned && (
                       <p>
                         체스 순손익{" "}
-                        {g.settlement.chessAward!.w - 15 >= 0 ? "+" : ""}
-                        {g.settlement.chessAward!.w - 15} G · 포커 순손익{" "}
+                        {g.settlement.chessAward!.w - chessShare >= 0
+                          ? "+"
+                          : ""}
+                        {g.settlement.chessAward!.w - chessShare} G · 포커
+                        순손익{" "}
                         {g.settlement.award.w -
-                          (g.committed.w - 15 - g.settlement.returned.w) >=
+                          (g.committed.w -
+                            chessShare -
+                            g.settlement.returned.w) >=
                         0
                           ? "+"
                           : ""}
                         {g.settlement.award.w -
-                          (g.committed.w - 15 - g.settlement.returned.w)}{" "}
+                          (g.committed.w -
+                            chessShare -
+                            g.settlement.returned.w)}{" "}
                         G
                       </p>
                     )}
@@ -1463,8 +1503,8 @@ function App() {
                     {outcome === "failed" ? (
                       <>
                         <p>
-                          참가금 20G가 부족합니다. 게임 오버 · 이어하기는
-                          종료됩니다.
+                          참가금 {CURRENT_ENTRY} G가 부족합니다. 게임 오버 ·
+                          이어하기는 종료됩니다.
                         </p>
                         <button
                           className="primary full"
@@ -1603,10 +1643,10 @@ function App() {
                 <h2>정원의 규칙</h2>
                 <ol className="rules">
                   <li>
-                    <b>입장</b>각 1,000 G로 시작합니다. 새 판마다 체스 15 G +
-                    포커 5 G를 미리 냅니다. 체스 팟 30 G는 승자에게, 무승부이면
-                    전체 40 G를 포커에서 겨룹니다. 체스 배당은 이번 포커에
-                    재사용할 수 없습니다.
+                    <b>입장</b>새 게임은 각 1,000 G. 각자 50 G를 한 번
+                    예치합니다. 양측 합계 100 G 중 체스 승자 40 G, 포커 승자 60
+                    G와 유효 추가 베팅을 받습니다. 체스 무승부면 전체 100 G를
+                    포커에서 겨룹니다. 포커 전환 시 추가 참가금은 없습니다.
                   </li>
                   <li>
                     <b>체스</b>일반 체스처럼 움직입니다. 내 기물의 카드가
@@ -1630,14 +1670,14 @@ function App() {
                     베팅합니다.
                   </li>
                   <li>
-                    <b>최종 정산</b>미대응 초과액을 반환하고 유효 팟을
-                    분배합니다. 새 판은 최종 20 G 보장이 없습니다. 포커 체크도 5
-                    G 참가금은 걸려 있으며 폴드하면 잃습니다. 포커는 무늬까지
-                    비교해 승자를 결정합니다. 기존 저장 판은 기존 20 G
-                    참가금·보호 규칙으로 마칩니다.
+                    <b>최종 정산</b>미매칭 초과액을 원래 주인에게 반환하고 한
+                    번만 지급합니다. 최저 잔액 보장은 없습니다. 체스를 이겨도
+                    포커를 폴드하면 추가 베팅 없는 기준으로 10 G를 잃습니다.
+                    기존 저장 판은 해당 판에 기록된 이전 경제 규칙으로
+                    정산합니다.
                   </li>
                   <li>
-                    <b>다음 판</b>최종 잔액이 20 G 미만이면 전체 패배입니다.
+                    <b>다음 판</b>최종 잔액이 50 G 미만이면 전체 패배입니다.
                     체스는 플레이어 백색으로 새로 시작하고 카드를 다시
                     배정합니다.
                   </li>

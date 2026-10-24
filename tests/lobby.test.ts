@@ -1,5 +1,7 @@
+const newLobby = (...args: Parameters<typeof basenewLobby>) =>
+  basenewLobby(args[0], args[1], "r3");
 import { expect, it } from "vitest";
-import { newLobby, enterGame, applyMove } from "../src/engine";
+import { newLobby as basenewLobby, enterGame, applyMove } from "../src/engine";
 import { restore } from "../src/persistence";
 it("reserves no gold before entry and charges exactly once", () => {
   const lobby = newLobby({ w: 980, b: 1020 }, 2);

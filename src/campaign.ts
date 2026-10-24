@@ -1,12 +1,12 @@
-import { newLobby, type Game } from "./engine";
+import { CURRENT_ENTRY, newLobby, type Game } from "./engine";
 export const EMPEROR_GOLD = 2_100_000_000;
 export function newCampaign(): Game {
   return { ...newLobby(), journey: { opponent: "roan", screen: "prologue" } };
 }
 export function campaignOutcome(g: Game) {
   if (!g.settlement) return "playing";
-  if (g.settlement.final.w < 20) return "failed";
-  if (g.settlement.final.b < 20)
+  if (g.settlement.final.w < CURRENT_ENTRY) return "failed";
+  if (g.settlement.final.b < CURRENT_ENTRY)
     return g.journey?.opponent === "emperor" ? "true-ending" : "ending";
   return "round";
 }
@@ -30,7 +30,11 @@ export function finishEnding(g: Game): Game {
   throw Error("승리 엔딩 조건이 아닙니다.");
 }
 export function abandon(g: Game): Game {
-  if (g.economy !== "r3" || g.phase === "lobby" || g.phase === "result")
+  if (
+    (g.economy !== "r3" && g.economy !== "r4") ||
+    g.phase === "lobby" ||
+    g.phase === "result"
+  )
     return g;
   return {
     ...g,
