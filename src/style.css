@@ -2520,3 +2520,49 @@ input[type="checkbox"] {
     animation: none;
   }
 }
+
+/* Poker takes place on the garden lawn, not on a felt table. */
+.garden-arena.poker-scene {
+  background: #6b7652 url('/art/royal-garden-v1.png') center / cover;
+}
+.poker-scene .table-area { background: transparent; }
+.poker-scene .poker-table {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 20px 8px;
+  gap: 8px;
+}
+.poker-scene .table-flourish { display: none; }
+.poker-scene .opponent-hand { gap: 12px; }
+.poker-scene .opponent-hand .character-card {
+  width: clamp(66px, 6.6vw, 105px);
+  height: clamp(128px, 12.8vw, 204px);
+}
+.poker-scene .own-hand { gap: 12px; }
+.poker-scene .character-card::after {
+  content: ''; position: absolute; bottom: -3px; left: 20%; right: 20%; height: 7px;
+  border-radius: 50%; background: #29291c3b; filter: blur(3px); z-index: -1;
+}
+.poker-scene .central-pot {
+  width: min(290px, 85%); height: auto; min-height: 104px;
+  margin: 12px 0; padding: 12px 18px;
+  border: 2px solid #776344; border-radius: 5px;
+  background: linear-gradient(110deg, #e5d7b6f5, #f4e9cbf5, #d9c69ff5);
+  box-shadow: 0 5px 0 #665238, 0 9px 16px #30281b44;
+}
+.poker-scene .central-pot strong { color: #3b3726; }
+.poker-scene .pot-label,
+.poker-scene .central-pot > span:last-child { color: #51472e; max-width: 260px; font-size: 12px; }
+.poker-scene .reveal-stage,
+.poker-scene .hand-name,
+.poker-scene .selection-instruction {
+  color: #302f23; background: #f0e3c5f2;
+  border: 1px solid #8c7753; border-radius: 3px;
+  padding: 7px 14px; margin: 4px 0;
+  box-shadow: 0 2px 5px #30281830;
+}
+.poker-scene .selection-instruction strong,
+.poker-scene .selection-instruction span,
+.poker-scene .joker-resolution { color: #454631; }
