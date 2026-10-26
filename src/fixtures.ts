@@ -13,14 +13,16 @@ import {
 export function fixture(name: string): Game {
   if (name === "r4-lobby") return newLobby();
   let g = newGame();
+  if (name === "art-chess") return g;
   for (const m of ["f3", "e5", "g4", "Qh4#"]) g = applyMove(g, m);
   if (name === "selection") return g;
   g = startBetting(
     g,
     survivors(chessOf(g), g.identities, "w").slice(0, 5),
     survivors(chessOf(g), g.identities, "b").slice(0, 5),
+    name === "staged-poker",
   );
-  if (name === "betting") return g;
+  if (name === "betting" || name === "staged-poker") return g;
   g = act(g, "w", { type: "allin" });
   g = act(g, "b", { type: name === "fold" ? "fold" : "call" });
   if (name.startsWith("campaign-")) {

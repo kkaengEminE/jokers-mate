@@ -38,6 +38,23 @@ export function restore(raw: string | null): Game | null {
         ))
     )
       return null;
+    if (
+      g.betting?.street !== undefined &&
+      (!Number.isInteger(g.betting.street) ||
+        g.betting.street < 0 ||
+        g.betting.street > 2 ||
+        !g.betting.streetStart ||
+        ["w", "b"].some((side) => {
+          const s = side as "w" | "b";
+          const amount = g.betting!.streetStart![s];
+          return (
+            !Number.isSafeInteger(amount) ||
+            amount < entryFee(g.economy) ||
+            amount > g.committed[s]
+          );
+        }))
+    )
+      return null;
     const c = chessOf(g),
       board = c.board().flat().filter(Boolean);
     if (

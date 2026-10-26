@@ -17,6 +17,8 @@ export interface Settlement {
   pot: number;
 }
 export interface Betting {
+  street?: number; // 0..2; absent preserves legacy single-round saves
+  streetStart?: Pair;
   turn: Side;
   acted: Side[];
   lastRaise: number;
@@ -294,7 +296,12 @@ export function settle(
     throw new Error("보존 실패");
   return { final, returned, award, protection, pot };
 }
-export function startBetting(g: Game, player: Card[], opponent: Card[]): Game {
+export function startBetting(
+  g: Game,
+  player: Card[],
+  opponent: Card[],
+  staged = false,
+): Game {
   if (g.phase !== "selection")
     throw new Error("카드를 선택할 단계가 아닙니다.");
   const c = chessOf(g);
@@ -321,6 +328,7 @@ export function startBetting(g: Game, player: Card[], opponent: Card[]): Game {
     ),
   };
   n.betting = {
+    ...(staged ? { street: 0, streetStart: { ...n.committed } } : {}),
     turn: g.round % 2 === 1 ? "w" : "b",
     acted: [],
     lastRaise: 20,
@@ -416,6 +424,22 @@ export function act(g: Game, side: Side, action: Action): Game {
   const shortAllin =
     (n.committed.w === n.banks.w && n.committed.w <= n.committed.b) ||
     (n.committed.b === n.banks.b && n.committed.b <= n.committed.w);
+  if (
+    bothActed &&
+    bothEqual &&
+    !shortAllin &&
+    b.street !== undefined &&
+    b.street < 2
+  ) {
+    b.street++;
+    b.streetStart = { ...n.committed };
+    b.acted = [];
+    b.lastRaise = 20;
+    b.raiseLocked = null;
+    b.turn = n.round % 2 === 1 ? "w" : "b";
+    b.log.push(`공개 ${b.street + 1}장 · 베팅 ${b.street + 1}/3`);
+    return n;
+  }
   if ((bothActed && bothEqual) || shortAllin) {
     b.done = true;
     return finish(n);
@@ -577,7 +601,15 @@ export function chooseMove(
   if (!choice) throw new Error("가능한 수 없음");
   return { from: choice.from, to: choice.to, promotion: choice.promotion };
 }
+export function exposedHand(g: Game, side: Side): Card[] {
+  if (g.abandoned) return [];
+  if (g.phase === "result" && !g.betting?.folded) return g.hands[side];
+  return g.betting?.street === undefined
+    ? []
+    : g.hands[side].slice(0, g.betting.street + 1);
+}
 export interface PokerView {
+  opponentPublic?: Card[];
   ownHand: Card[];
   banks: Pair;
   committed: Pair;
@@ -592,6 +624,12 @@ export function chooseBet(view: PokerView, rng = Math.random): Action {
     left = banks[s] - c[s],
     strength = evaluate(view.ownHand).category,
     roll = rng();
+  const publicRanks = (view.opponentPublic ?? []).map((c) => c.rank);
+  const publicPair = publicRanks.some(
+    (rank, i) => publicRanks.indexOf(rank) !== i,
+  );
+  if (owed > 0 && strength === 0 && publicPair && roll > 0.25)
+    return { type: "fold" };
   const raiseAllowed =
     view.raiseLocked !== s && banks[opp] > c[opp] && left > owed;
   if (

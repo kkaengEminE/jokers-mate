@@ -14,6 +14,8 @@ import {
   actions,
   act,
   chooseBet,
+  exposedHand,
+  shuffle,
   startBetting,
   sideName,
   makeRecord,
@@ -33,6 +35,7 @@ import {
 } from "./campaign";
 import { restore } from "./persistence";
 import "./style.css";
+import { Checard, type ChessRole } from "./Checard";
 import { GoldProcession } from "./GoldProcession";
 const fixtureName = import.meta.env.DEV
   ? new URLSearchParams(location.search).get("fixture")
@@ -41,7 +44,7 @@ const fixtureGame = fixtureName
   ? (await import("./fixtures")).fixture(fixtureName)
   : null;
 const STORAGE = fixtureName
-    ? "jokers-gambit-qa-session-v2"
+    ? `jokers-gambit-qa-session-v2-${fixtureName}`
     : "jokers-gambit-session-v2",
   HISTORY = fixtureName
     ? "jokers-gambit-qa-records-v2"
@@ -76,15 +79,19 @@ function PlayingCard({
   selected = false,
   onClick,
   small = false,
+  role,
 }: {
   card?: Card;
   hidden?: boolean;
   selected?: boolean;
   onClick?: () => void;
   small?: boolean;
+  role?: ChessRole;
 }) {
-  const className = `playing-card ${hidden ? "back" : ""} ${card?.suit === "D" || card?.suit === "H" ? "red" : ""} ${selected ? "picked" : ""} ${small ? "small" : ""}`;
-  const content = hidden ? (
+  const className = `playing-card ${role ? "character-card" : ""} ${hidden ? "back" : ""} ${card?.suit === "D" || card?.suit === "H" ? "red" : ""} ${selected ? "picked" : ""} ${small ? "small" : ""}`;
+  const content = role ? (
+    <Checard role={role} card={hidden ? undefined : card} hidden={hidden} />
+  ) : hidden ? (
     <>
       <span className="back-diamond">✦</span>
       <span className="back-line" />
@@ -95,7 +102,11 @@ function PlayingCard({
         {card.suit === "J" ? "JK" : label(card).slice(0, -1)}
         <i>{SYMBOLS[card.suit]}</i>
       </span>
-      <span className="card-symbol">{SYMBOLS[card.suit]}</span>
+      {role ? (
+        <Checard role={role} card={card} />
+      ) : (
+        <span className="card-symbol">{SYMBOLS[card.suit]}</span>
+      )}
       <span className="card-bottom">
         {card.suit === "J" ? "WILD" : label(card)}
       </span>
@@ -291,6 +302,7 @@ function App() {
       try {
         const action = chooseBet({
           ownHand: g.hands.b,
+          opponentPublic: exposedHand(g, "w"),
           banks: g.banks,
           committed: g.committed,
           turn: "b",
@@ -388,7 +400,17 @@ function App() {
         if (!controller.signal.aborted) setSuggesting(false);
       });
   }
-  const chosen = own.filter((x) => selectedCards.includes(x.id));
+  const chosen = selectedCards
+    .map((id) => own.find((x) => x.id === id)!)
+    .filter(Boolean);
+  const roleFor = (card?: Card): ChessRole | undefined =>
+    card
+      ? Object.entries(g.identities).reduce<ChessRole | undefined>(
+          (found, [square, identity]) =>
+            identity.id === card.id ? c.get(square as Square)?.type : found,
+          undefined,
+        )
+      : undefined;
   const selectedName = useMemo(
     () => (chosen.length === 5 ? evaluate(chosen).name : ""),
     [selectedCards, g.identities],
@@ -806,7 +828,10 @@ function App() {
             </section>
           ) : (
             <div className="game-layout">
-              <section className="arena" aria-label="게임 테이블">
+              <section
+                className={`arena garden-arena ${g.phase === "chess" || reviewingChess ? "chess-scene" : "poker-scene"}`}
+                aria-label="게임 테이블"
+              >
                 <GoldProcession game={g} paused={titleScreen || !motion} />
                 {g.phase === "chess" && g.moves.length === 0 && (
                   <div
@@ -964,18 +989,13 @@ function App() {
                                     <span
                                       className={`piece ${piece.color === "w" ? "ivory" : "onyx"}`}
                                     >
-                                      <span className="chess-hat">
-                                        {PIECES[piece.color][piece.type]}
-                                      </span>
-                                      <span className="card-person">
-                                        <i className="card-face">• ‿ •</i>
-                                        <b>
-                                          {piece.color === "w" && card
-                                            ? label(card)
-                                            : "❖"}
-                                        </b>
-                                        <i className="card-feet">╱ ╲</i>
-                                      </span>
+                                      <Checard
+                                        role={piece.type}
+                                        card={
+                                          piece.color === "w" ? card : undefined
+                                        }
+                                        hidden={piece.color === "b"}
+                                      />
                                     </span>
                                     <span
                                       className={`identity ${piece.color === "b" ? "concealed" : card?.suit === "D" || card?.suit === "H" ? "red" : ""}`}
@@ -1022,12 +1042,22 @@ function App() {
                           <b>◉━━◉</b>
                         </div>
                       )}
+                      {g.betting?.street !== undefined && (
+                        <div className="reveal-stage" role="status">
+                          베팅 {g.betting.street + 1} / 3 · 양측{" "}
+                          {g.betting.street + 1}장 공개
+                          {g.phase === "result"
+                            ? " · 종료"
+                            : " · 라운드 종료 후 다음 공개"}
+                        </div>
+                      )}
                       <div className="opponent-hand">
                         {Array.from({ length: 5 }, (_, i) => (
                           <PlayingCard
                             key={i}
-                            hidden={!visibleOpponent}
-                            card={visibleOpponent ? g.hands.b[i] : undefined}
+                            hidden={!exposedHand(g, "b")[i]}
+                            card={exposedHand(g, "b")[i]}
+                            role={roleFor(exposedHand(g, "b")[i]) ?? "p"}
                           />
                         ))}
                       </div>
@@ -1067,9 +1097,29 @@ function App() {
                         </div>
                       ) : (
                         <>
+                          {g.betting?.street !== undefined &&
+                            g.phase !== "result" && (
+                              <p className="reveal-stage">
+                                내 공개 카드:{" "}
+                                {exposedHand(g, "w").map(label).join(" · ")} ·
+                                나머지는 상대에게 비공개
+                              </p>
+                            )}
                           <div className="own-hand">
                             {g.hands.w.map((card) => (
-                              <PlayingCard key={card.id} card={card} />
+                              <PlayingCard
+                                key={card.id}
+                                card={card}
+                                role={Object.entries(g.identities).reduce<
+                                  ChessRole | undefined
+                                >(
+                                  (found, [square, identity]) =>
+                                    identity.id === card.id
+                                      ? c.get(square as Square)?.type
+                                      : found,
+                                  undefined,
+                                )}
+                              />
                             ))}
                           </div>
                           <div className="hand-name">
@@ -1132,6 +1182,14 @@ function App() {
                     </div>
                   </div>
                 </div>
+                <nav className="rule-books" aria-label="규칙책">
+                  <button onClick={() => setModal("help")}>
+                    <span aria-hidden="true">♜</span> 체스 규칙책
+                  </button>
+                  <button onClick={() => setModal("help")}>
+                    <span aria-hidden="true">♠</span> 포커 규칙책
+                  </button>
+                </nav>
                 <div className="status-bar" role="status">
                   <span className={`status-dot ${busy ? "thinking" : ""}`} />
                   {status}
@@ -1257,7 +1315,7 @@ function App() {
                 {g.phase === "selection" && !reviewingChess && (
                   <section className="panel selection-panel">
                     <div className="panel-title">
-                      <h3>내 생존 카드</h3>
+                      <h3>내 생존 카드 · 선택 순서가 공개 순서</h3>
                       <span>{selectedCards.length} / 5</span>
                     </div>
                     <div className="card-picker">
@@ -1279,6 +1337,18 @@ function App() {
                         />
                       ))}
                     </div>
+                    <p className="reveal-plan">
+                      선택한 1·2·3번째 카드를 순서대로 공개합니다. 4·5번째는
+                      마지막까지 비공개입니다. 카드를 다시 누르면 선택을 취소해
+                      순서를 바꿀 수 있습니다.
+                      <br />
+                      {chosen
+                        .map(
+                          (card, i) =>
+                            `${i + 1}: ${label(card)} (${i < 3 ? "공개" : "비공개"})`,
+                        )
+                        .join(" → ")}
+                    </p>
                     <p className="selection-name">
                       {selectedName || "다섯 장을 선택하면 족보가 표시됩니다."}
                     </p>
@@ -1298,7 +1368,7 @@ function App() {
                       }
                       onClick={() => {
                         try {
-                          setG(startBetting(g, chosen, aiHand));
+                          setG(startBetting(g, chosen, shuffle(aiHand), true));
                           setError("");
                         } catch (err) {
                           setError(String(err));
@@ -1315,7 +1385,11 @@ function App() {
                   <section className="panel betting-panel">
                     <div className="panel-title">
                       <h3>베팅 라운드</h3>
-                      <span>1 / 1</span>
+                      <span>
+                        {g.betting?.street === undefined
+                          ? "1 / 1"
+                          : `${g.betting.street + 1} / 3`}
+                      </span>
                     </div>
                     <div className="bet-summary">
                       <span>
@@ -1664,10 +1738,12 @@ function App() {
                     없습니다.
                   </li>
                   <li>
-                    <b>베팅</b>한 라운드. 최소 베트·인상폭 20 G, 이후 마지막
-                    정규 인상폭 이상. 짧은 올인은 이미 행동한 상대의 레이즈를
-                    다시 열지 않습니다. 홀수 판은 당신이, 짝수 판은 기사가 먼저
-                    베팅합니다.
+                    <b>베팅</b>새로 시작한 포커는 세 라운드입니다. 1장 → 2장 →
+                    3장 공개 후 각각 베팅하고, 마지막에 남은 두 장을 공개합니다.
+                    체크-체크는 다음 단계로 넘어갑니다. 참가금은 한 번만 냅니다.
+                    최소 베트·인상폭 20 G, 이후 마지막 정규 인상폭 이상. 짧은
+                    올인은 이미 행동한 상대의 레이즈를 다시 열지 않습니다. 홀수
+                    판은 당신이, 짝수 판은 기사가 먼저 베팅합니다.
                   </li>
                   <li>
                     <b>최종 정산</b>미매칭 초과액을 원래 주인에게 반환하고 한

@@ -2267,3 +2267,256 @@ input[type="checkbox"] {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* Reference-led storybook art, v1. Game values remain live DOM content. */
+.title-screen {
+  background:
+    linear-gradient(#0b201e55, #0b201ed9),
+    url("/art/royal-garden-v1.png") center / cover;
+}
+.garden-arena {
+  background:
+    linear-gradient(#142d2466, #142d2488),
+    url("/art/royal-garden-v1.png") center / cover;
+}
+.garden-arena .board-shell {
+  background: #725535;
+  border-color: #c4a372;
+  box-shadow:
+    0 12px 25px #22170c77,
+    inset 0 0 0 3px #3e2c1d;
+}
+.garden-arena .square.light {
+  background-color: #ddd0a6;
+}
+.garden-arena .square.dark {
+  background-color: #84916b;
+}
+.checard {
+  position: relative;
+  display: inline-block;
+  height: 100%;
+  aspect-ratio: 300 / 580;
+  color: #22261e;
+  text-shadow: none;
+  filter: none;
+  pointer-events: none;
+}
+.checard svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: hidden;
+}
+.checard-value {
+  position: absolute;
+  top: 43%;
+  left: 24%;
+  width: 52%;
+  height: 33%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font:
+    700 clamp(10px, 1vw, 17px) Georgia,
+    serif;
+  line-height: 1;
+}
+.checard-red {
+  color: #a02e28;
+}
+.checard-hidden .checard-value {
+  top: 40%;
+  left: 23%;
+  width: 54%;
+  height: 39%;
+  color: #e4d2a1;
+  background: repeating-linear-gradient(
+    45deg,
+    #253e46,
+    #253e46 3px,
+    #3f5660 3px,
+    #3f5660 4px
+  );
+  border: 1px solid #c6ad72;
+  border-radius: 2px;
+}
+.square .piece {
+  filter: none;
+  padding-bottom: 2px;
+}
+.playing-card > .checard {
+  height: 90%;
+  margin: 5% auto;
+}
+.playing-card > .checard .checard-value {
+  font-size: 15px;
+}
+.rule-books {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 20px;
+  gap: 16px;
+}
+.rule-books button {
+  background: linear-gradient(
+    90deg,
+    #ddcaa0,
+    #f1e4c5 48%,
+    #ad9362 50%,
+    #eddfbc 53%
+  );
+  border: 2px solid #765934;
+  border-radius: 3px 8px 8px 3px;
+  color: #302c21;
+  padding: 10px 18px;
+  box-shadow: 2px 3px 0 #46321e;
+  font-weight: 700;
+}
+.rule-books button:hover {
+  color: #302c21;
+  filter: brightness(1.08);
+}
+.garden-arena .stake-summary,
+.garden-arena .player-row {
+  background: #142c24e8;
+}
+.garden-arena .captures small {
+  color: #c0c6ac;
+}
+.garden-arena .player-row {
+  padding: 10px;
+  border: 1px solid #b19b6255;
+  border-radius: 4px;
+}
+@media (min-width: 1000px) {
+  .chess-scene .entry-procession {
+    height: 30px;
+    font-size: 11px;
+  }
+  .chess-scene .stake-summary {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  .chess-scene .stake-summary span {
+    display: inline;
+    margin-left: 12px;
+    font-size: 11px;
+  }
+  .chess-scene .phase-bar {
+    height: 36px;
+  }
+  .chess-scene .phase-bar > div > span {
+    width: 24px;
+    height: 24px;
+  }
+  .chess-scene .table-area {
+    display: grid;
+    grid-template-columns: minmax(95px, 1fr) minmax(0, 3fr) minmax(95px, 1fr);
+    align-items: center;
+    padding: 12px;
+    gap: 10px;
+  }
+  .chess-scene .board-shell {
+    grid-column: 2;
+    grid-row: 1;
+    width: 100%;
+    max-width: min(52vh, 600px);
+    box-sizing: border-box;
+  }
+  .chess-scene .player-row {
+    flex-direction: column;
+    align-items: stretch;
+    margin: 0;
+    gap: 24px;
+  }
+  .chess-scene .opponent-row {
+    grid-column: 3;
+    grid-row: 1;
+    align-self: start;
+  }
+  .chess-scene .self-row {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: end;
+  }
+  .chess-scene .vault {
+    flex-direction: column;
+    gap: 4px;
+    text-align: center;
+  }
+  .chess-scene .player-name small {
+    display: block;
+    margin: 3px 0;
+  }
+  .chess-scene .vault strong {
+    font-size: 28px;
+  }
+  .chess-scene .captures {
+    max-width: 100%;
+    text-align: center;
+  }
+  .chess-scene .captures > div {
+    justify-content: center;
+  }
+  .chess-scene .rule-books {
+    padding: 4px 12px 10px;
+  }
+  .chess-scene .rule-books button {
+    padding: 7px 12px;
+    font-size: 12px;
+  }
+}
+/* A Checard is the card, not an illustration printed on another card. */
+.playing-card.character-card,
+.playing-card.character-card.back {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  width: clamp(78px, 8vw, 125px);
+  height: clamp(150px, 15vw, 240px);
+  overflow: visible;
+}
+.playing-card.character-card > .checard {
+  height: 100%;
+  margin: 0;
+  animation: checard-idle 4.8s ease-in-out infinite;
+  transform-origin: 50% 92%;
+}
+.playing-card.character-card:nth-child(2n) > .checard {
+  animation-delay: -1.6s;
+}
+.playing-card.character-card:nth-child(3n) > .checard {
+  animation-delay: -3.2s;
+}
+.playing-card.character-card .checard-value {
+  font-size: clamp(16px, 1.6vw, 25px);
+}
+.reveal-plan {
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 12px 0;
+}
+.reveal-stage {
+  text-align: center;
+  color: #eed79b;
+  margin-bottom: 12px;
+}
+@keyframes checard-idle {
+  0%,
+  100% {
+    transform: rotate(-0.6deg);
+  }
+  50% {
+    transform: rotate(0.6deg) translateY(-1px);
+  }
+}
+.no-motion .character-card > .checard {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .playing-card.character-card > .checard {
+    animation: none;
+  }
+}
