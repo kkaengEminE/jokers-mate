@@ -4,7 +4,7 @@ export interface Card {
   rank: number;
   suit: Suit | "J";
 }
-export const SUITS: Suit[] = ["S", "D", "H", "C"];
+export const SUITS: Suit[] = ["S", "H", "D", "C"];
 export const SYMBOLS = { S: "♠", D: "♦", H: "♥", C: "♣", J: "✦" };
 export const NAMES = [
   "하이카드",
@@ -21,7 +21,7 @@ export const NAMES = [
 export const label = (c: Card) =>
   c.suit === "J"
     ? "JOKER"
-    : `${({ 11: "J", 12: "Q", 13: "K", 14: "A" } as Record<number, string>)[c.rank] ?? c.rank}${SYMBOLS[c.suit]}`;
+    : `${SYMBOLS[c.suit]} ${({ 11: "J", 12: "Q", 13: "K", 14: "A" } as Record<number, string>)[c.rank] ?? c.rank}`;
 export const deck = (): Card[] => [
   ...SUITS.flatMap((suit) =>
     Array.from({ length: 13 }, (_, i) => ({

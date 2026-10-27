@@ -159,8 +159,8 @@ describe("poker evaluation", () => {
     ).toBe(1);
     expect(
       compare(
-        evaluate(cards("14D 13H 9S 5C 2H")).key,
-        evaluate(cards("14H 13D 9C 5S 2D")).key,
+        evaluate(cards("14H 13D 9S 5C 2H")).key,
+        evaluate(cards("14D 13H 9C 5S 2D")).key,
       ),
     ).toBe(1);
   });

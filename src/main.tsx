@@ -99,8 +99,7 @@ function PlayingCard({
   ) : card ? (
     <>
       <span className="card-corner">
-        {card.suit === "J" ? "JK" : label(card).slice(0, -1)}
-        <i>{SYMBOLS[card.suit]}</i>
+        {card.suit === "J" ? "JK" : label(card)}
       </span>
       {role ? (
         <Checard role={role} card={card} />
@@ -787,7 +786,7 @@ function App() {
                     </tbody>
                   </table>
                   <p className="fine-print">
-                    포커는 ♠ → ♦ → ♥ → ♣ 순서까지 비교해 승자를 정합니다. 체스
+                    포커는 ♠ → ♥ → ♦ → ♣ 순서까지 비교해 승자를 정합니다. 체스
                     승리 뒤 포커 폴드의 기본 손익은 {pool - fee} G입니다. 새
                     규칙은 잔액을 보충하지 않으며 5판마다 참가금을 올리지
                     않습니다.
@@ -1657,7 +1656,7 @@ function App() {
           )}
         </div>
         <footer>
-          <span>♠ ♦ ♥ ♣</span>
+          <span>♠ ♥ ♦ ♣</span>
           <p>
             JOKER’S MATE <i>·</i> 가상 골드만 사용하는 전략 게임
           </p>
