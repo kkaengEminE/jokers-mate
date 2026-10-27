@@ -887,6 +887,7 @@ function App() {
                   </div>
                 )}
 
+                <div className="rules-version" role="note">{fee === 50 ? "현행 규칙 · 참가 50G · 추가 베팅 최소 20G" : "저장된 구규칙 판 · 참가 20G · 다음 판부터 50G 적용"}</div>
                 <div className="phase-bar">
                   <div
                     className={

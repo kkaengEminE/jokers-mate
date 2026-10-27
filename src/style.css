@@ -2566,3 +2566,43 @@ input[type="checkbox"] {
 .poker-scene .selection-instruction strong,
 .poker-scene .selection-instruction span,
 .poker-scene .joker-resolution { color: #454631; }
+/* The chess grid is marked on the garden lawn; no separate wooden table. */
+.garden-arena.chess-scene { background: #78804d url('/art/garden-overhead-v1.png') center / cover; }
+.garden-arena.chess-scene .table-area { background: transparent; }
+.garden-arena.chess-scene .board-shell {
+  background: url('/art/garden-overhead-v1.png') center / 100% 100%;
+  padding: 5%; border: 0; box-shadow: none;
+}
+.chess-scene .board-shell::before,
+.chess-scene .board-shell::after,
+.chess-scene .board-ornament { display: none; }
+.chess-scene .board { border: 1px solid #48502f; box-shadow: none; background: transparent; }
+.garden-arena.chess-scene .square.light { background: #eee5b92e; }
+.garden-arena.chess-scene .square.dark { background: #314b284a; }
+.chess-scene .square { box-shadow: inset 0 0 0 0.5px #35412545; }
+.garden-arena.chess-scene .square.selected { background: #e9c45b99; }
+.garden-arena.chess-scene .square.last-move { box-shadow: inset 0 0 0 3px #c8a342b0; }
+.garden-arena.chess-scene .square.in-check { background: #b5424288; }
+.garden-arena.chess-scene .square:hover:not(:disabled) { background: #ede6b678; }
+.chess-scene .board-caption { background: #ede1bedd; color: #343e25; padding: 6px; }
+.rules-version { background: #142c24ed; color: #ecdbab; font-size: 12px; text-align: center; padding: 6px 10px; }
+
+/* Gentle player-side perspective; transformed buttons retain their hit areas. */
+.garden-arena.chess-scene .board-shell {
+  transform: perspective(1400px) rotateX(22deg) scale(.96);
+  transform-origin: 50% 55%;
+}
+@media (max-width: 700px) {
+  .garden-arena.chess-scene .board-shell {
+    transform: perspective(1100px) rotateX(16deg) scale(.97);
+  }
+}
+@media (min-width: 1000px) {
+  .chess-scene .table-area {
+    grid-template-columns: minmax(80px, 1fr) minmax(0, 5fr) minmax(80px, 1fr);
+  }
+  .garden-arena.chess-scene .board-shell {
+    max-width: min(72vh, 760px);
+    padding: 3%;
+  }
+}
