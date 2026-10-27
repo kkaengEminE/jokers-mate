@@ -6,7 +6,7 @@
 |---|---|
 | Card | 고유 실물 id, rank, suit. 조커는 J1/J2 |
 | Game | version, 판 id, 판 번호, phase, economy(경제 버전), SAN 수순, 칸→Card 배정, 잡힌 카드, banks, committed, 체스·포커 결과, 선택 패, 베팅, 정산, 업적 |
-| Betting | 차례, 행동 여부, 직전 레이즈 폭, 레이즈 잠금, 종료, 폴드, 행동 로그 |
+| Betting | street(0~2), streetStart(라운드 시작 누적 투입액), 차례, 행동 여부, 직전 레이즈 폭, 레이즈 잠금, 종료, 폴드, 행동 로그 |
 | Settlement | 최종 잔액, 미매칭 반환, 체스 배당, 포커 배당, 팟 |
 | RecordEntry | 날짜·판·결과·경제 버전·PGN·공개 카드·업적·정산 |
 
