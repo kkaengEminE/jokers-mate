@@ -2606,3 +2606,52 @@ input[type="checkbox"] {
     padding: 3%;
   }
 }
+
+/* Board pieces use side colors independently of their poker cards. */
+.chess-scene .square { container-type: inline-size; }
+.chess-scene .square .piece {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0 0 10%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(28px, 7vw, 66px);
+  font-size: 82cqi;
+  line-height: 1;
+  pointer-events: none;
+}
+.chess-symbol { font-family: "DejaVu Sans", "Segoe UI Symbol", "Arial Unicode MS", sans-serif; }
+.chess-scene .square .piece.ivory {
+  color: #fff8e7;
+  -webkit-text-stroke: 1px #39372f;
+  text-shadow: 0 2px 2px #18291b99;
+}
+.chess-scene .square .piece.onyx {
+  color: #202522;
+  -webkit-text-stroke: 1px #eee1ba;
+  text-shadow: 0 2px 2px #18291b99;
+}
+.chess-scene .square .identity {
+  display: block;
+  position: absolute;
+  inset: auto 2px 1px auto;
+  z-index: 2;
+  width: auto;
+  height: auto;
+  padding: 1px 3px;
+  border-radius: 3px;
+  background: #fff4d9;
+  color: #202522;
+  font-size: clamp(9px, 2.3vw, 14px);
+  line-height: 1.1;
+  text-shadow: none;
+  pointer-events: none;
+}
+.chess-scene .square .identity.red { color: #a02e28; }
+.chess-scene .square .identity.concealed { background: #243c35; color: #efdfb3; }
+@media (max-width: 700px) {
+  .garden-arena.chess-scene .board-shell { transform: none; padding: 2%; }
+}

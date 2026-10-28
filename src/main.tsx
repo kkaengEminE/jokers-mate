@@ -989,13 +989,9 @@ function App() {
                                     <span
                                       className={`piece ${piece.color === "w" ? "ivory" : "onyx"}`}
                                     >
-                                      <Checard
-                                        role={piece.type}
-                                        card={
-                                          piece.color === "w" ? card : undefined
-                                        }
-                                        hidden={piece.color === "b"}
-                                      />
+                                      <span className="chess-symbol" aria-hidden="true">
+                                        {{ k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" }[piece.type]}
+                                      </span>
                                     </span>
                                     <span
                                       className={`identity ${piece.color === "b" ? "concealed" : card?.suit === "D" || card?.suit === "H" ? "red" : ""}`}
