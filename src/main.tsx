@@ -129,6 +129,23 @@ function PlayingCard({
     </div>
   );
 }
+function ResultDialog({ title, children, active }: { title: string; children: React.ReactNode; active: boolean }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const element = dialog.current;
+    if (active && element && !element.open) element.showModal();
+    if (!active) element?.close();
+    return () => element?.close();
+  }, [active]);
+  return <>
+    <button className="result-reopen" onClick={() => dialog.current?.showModal()}>{title} 보기</button>
+    <dialog ref={dialog} className="result-dialog" aria-label={title}>
+      <button className="result-dismiss" onClick={() => dialog.current?.close()}>게임판 보기 · 닫기</button>
+      {children}
+    </dialog>
+  </>;
+}
+
 function App() {
   const [emperorTitle, setEmperorTitle] = useState(() => {
     try {
@@ -186,11 +203,6 @@ function App() {
       ? c.moves({ square: selectedSquare as Square, verbose: true })
       : [];
   const reviewingChess = g.phase === "selection" && !g.chessReviewed;
-  const resultBanner = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if ((reviewingChess || g.phase === "result") && !titleScreen)
-      resultBanner.current?.scrollIntoView({ block: "start" });
-  }, [reviewingChess, g.id, g.phase, titleScreen]);
   const humanTurn = g.phase === "chess" && c.turn() === "w";
   const status = reviewingChess
     ? `체스 종료 · ${g.chessResult?.reason} · ${g.chessResult?.winner ? sideName(g.chessResult.winner) + " 승리" : "무승부"}`
@@ -637,23 +649,6 @@ function App() {
           </section>
         )}
         <div hidden={titleScreen || storyVisible}>
-          <section className="intro" hidden={g.phase !== "lobby"}>
-            <div>
-              <div className="eyebrow">
-                CHESS × POKER <span>EST. IN WONDERLAND</span>
-              </div>
-              <h1>
-                한 수의 전략.
-                <br className="mobile-break" /> 한 장의 반전.
-              </h1>
-              <p>왕을 지키고, 당신의 마지막 패를 준비하세요.</p>
-            </div>
-            <div className="round-marker">
-              <span>MATCH</span>
-              <strong>{String(g.round).padStart(2, "0")}</strong>
-              <small>총 {(g.banks.w + g.banks.b).toLocaleString()} 골드</small>
-            </div>
-          </section>
           {g.phase === "lobby" ? (
             <section className="lobby panel" aria-label="게임 시작">
               <div className="panel-eyebrow">
@@ -666,14 +661,7 @@ function App() {
                   다음 판부터 50 G·40/60 규칙을 적용합니다.
                 </p>
               )}
-              <p>
-                진행 상황은 자동 저장됩니다. 창을 닫거나 새로고침해도 이어하기로 계속할 수 있습니다.
-                납부액을 잃으며, 완료된 정산은 보존됩니다.
-              </p>
-              <p>
-                체스 → 마지막 판 확인 → 포커 → 정산. 한 판을 마치면 새 카드와 새
-                체스판으로 돌아옵니다.
-              </p>
+              <p>자동 저장 · 언제든 이어하기</p>
               <div className="lobby-stakes">
                 <article>
                   <span>내 현재 잔액</span>
@@ -694,24 +682,6 @@ function App() {
                   <small>상대도 {fee} G를 냅니다</small>
                 </article>
               </div>
-              <div className="lobby-columns">
-                <section>
-                  <h3>♜ 체스 합산 배당 · {pool} G</h3>
-                  <p>
-                    승자가 합산 {pool} G를 받고, 무승부는 이 금액이 포커로
-                    이월됩니다. 배당은 포커 종료까지 보관하며 이번 포커에 다시
-                    걸 수 없습니다.
-                  </p>
-                </section>
-                <section>
-                  <h3>♠ 포커 합산 배당 · {fee * 2 - pool} G</h3>
-                  <p>
-                    전환 시 추가 참가금 없이 생존 카드 다섯 장으로 겨룹니다.
-                    추가 베팅으로 팟을 키울 수 있고, 족보·숫자·무늬 순서로
-                    결정한 승자가 유효 팟을 받습니다.
-                  </p>
-                </section>
-              </div>
               <button
                 className="primary full"
                 onClick={() => {
@@ -728,94 +698,7 @@ function App() {
               >
                 {fee} G 걸고 {g.round === 1 ? "시작하기" : "다음 판 시작하기"} →
               </button>
-              <p className="fine-print">
-                가상 골드만 사용합니다. 최소 잔액 보장은 없습니다. 다음 판
-                참가금은 {CURRENT_ENTRY} G이며 그 미만이면 파산합니다.
-              </p>
-              <div className="lobby-columns">
-                <section>
-                  <h3>각각 이기거나 지면?</h3>
-                  <p>추가 베팅이 없을 때, 내 시작 잔액 대비 손익입니다.</p>
-                  <table className="outcome-table">
-                    <thead>
-                      <tr>
-                        <th>체스</th>
-                        <th>포커</th>
-                        <th>내 손익</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        ["승리", "승리", `+${fee} G`],
-                        [
-                          "승리",
-                          "패배·폴드",
-                          `${pool - fee > 0 ? "+" : ""}${pool - fee} G`,
-                        ],
-                        [
-                          "패배",
-                          "승리",
-                          `${fee - pool > 0 ? "+" : ""}${fee - pool} G`,
-                        ],
-                        ["패배", "패배·폴드", `−${fee} G`],
-                        [
-                          "무승부",
-                          "승리",
-                          `+${g.economy === "split-15-5" ? pokerShare : fee} G`,
-                        ],
-                        [
-                          "무승부",
-                          "패배·폴드",
-                          `−${g.economy === "split-15-5" ? pokerShare : fee} G`,
-                        ],
-                      ].map((row) => (
-                        <tr key={row.join()}>
-                          {row.map((cell, i) => (
-                            <td key={i}>{cell}</td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <p className="fine-print">
-                    포커는 ♠ → ♥ → ♦ → ♣ 순서까지 비교해 승자를 정합니다. 체스
-                    승리 뒤 포커 폴드의 기본 손익은 {pool - fee} G입니다. 새
-                    규칙은 잔액을 보충하지 않으며 5판마다 참가금을 올리지
-                    않습니다.
-                  </p>
-                </section>
-                <section>
-                  <h3>포커에서 무엇을 선택하나요?</h3>
-                  <dl className="action-guide">
-                    <dt>체크</dt>
-                    <dd>
-                      맞춰 낼 금액이 없을 때 추가 베팅 없이 넘깁니다. 서로
-                      체크하면 이미 걸린 팟으로 승부를 봅니다.
-                    </dd>
-                    <dt>폴드</dt>
-                    <dd>
-                      포커를 포기합니다. 개인 포커 몫 {pokerShare} G와 이미 맞춘
-                      추가 베팅을 잃습니다. 확정된 체스 배당은 유지되지만 체스가
-                      무승부면 이월된 체스 몫 {chessShare} G도 잃습니다.
-                    </dd>
-                    <dt>콜</dt>
-                    <dd>
-                      상대 베팅에 맞춰 냅니다. 부족하면 남은 금액만 걸고
-                      올인합니다.
-                    </dd>
-                    <dt>베트 / 레이즈</dt>
-                    <dd>
-                      판돈을 추가하거나 올립니다. 최소 추가 베팅·정상 인상폭은
-                      20 G입니다.
-                    </dd>
-                    <dt>올인</dt>
-                    <dd>
-                      금고에 남은 골드를 모두 겁니다. 상대가 맞추지 못한
-                      초과액은 돌려받습니다.
-                    </dd>
-                  </dl>
-                </section>
-              </div>
+              <button className="full" onClick={() => setModal("help")}>도움말 · 배당과 베팅 규칙</button>
             </section>
           ) : (
             <div className="game-layout">
@@ -840,10 +723,10 @@ function App() {
                 )}
 
                 {reviewingChess && (
+                  <ResultDialog title="체스 결과" active={!titleScreen && !storyVisible && !modal}>
                   <div
-                    ref={resultBanner}
                     className="chess-end-banner"
-                    role="status"
+
                   >
                     <strong>
                       {g.chessResult?.winner
@@ -851,8 +734,7 @@ function App() {
                         : "체스 무승부"}
                     </strong>
                     <p>
-                      {g.chessResult?.reason}. 체스가 끝났습니다. 아래에서
-                      마지막 판을 확인하고 포커로 계속하세요.
+                      {g.chessResult?.reason}. 체스가 끝났습니다. 포커로 계속하세요.
                     </p>
                     <button
                       className="primary full"
@@ -863,6 +745,7 @@ function App() {
                       포커로 계속 →
                     </button>
                   </div>
+                  </ResultDialog>
                 )}
 
                 {splitPots && (
@@ -1244,30 +1127,6 @@ function App() {
                     </p>
                   </div>
                 </section>
-                {reviewingChess && (
-                  <section className="panel result-panel" aria-live="polite">
-                    <div className="panel-eyebrow">CHESS RESULT</div>
-                    <h2>
-                      {g.chessResult?.winner
-                        ? sideName(g.chessResult.winner) + " 체스 승리"
-                        : "체스 무승부"}
-                    </h2>
-                    <p>
-                      {g.chessResult?.reason} · 마지막 수 {g.moves.at(-1)}
-                    </p>
-                    <p>
-                      마지막 체스판을 확인하세요. 이번 판은 아직 끝나지
-                      않았습니다. 생존 카드로 포커를 한 번 진행한 뒤 골드를
-                      정산합니다.
-                    </p>
-                    <button
-                      className="primary full"
-                      onClick={() => setG({ ...g, chessReviewed: true })}
-                    >
-                      결과 확인 · 포커로 넘어가기 →
-                    </button>
-                  </section>
-                )}
                 {(g.phase === "chess" || reviewingChess) && (
                   <section className="panel move-panel">
                     <div className="panel-title">
@@ -1467,7 +1326,8 @@ function App() {
                   </section>
                 )}
                 {g.phase === "result" && g.settlement && (
-                  <section className="panel result-panel" ref={resultBanner}>
+                  <ResultDialog title="최종 결과" active={!titleScreen && !storyVisible && !modal}>
+                  <section className="panel result-panel">
                     <div className="result-icon">
                       {g.result?.winner === "w"
                         ? "♛"
@@ -1488,10 +1348,6 @@ function App() {
                       {g.result?.reason} ·{" "}
                       {g.settlement.final.w - g.banks.w >= 0 ? "+" : ""}
                       {g.settlement.final.w - g.banks.w} G
-                    </p>
-                    <p>
-                      이번 판의 정산이 끝났습니다. 다음 판은 새 체스판과 새
-                      카드로 시작하며 참가금 {CURRENT_ENTRY} G를 다시 냅니다.
                     </p>
                     {splitPots && !drawCarry && !g.abandoned && (
                       <p>
@@ -1515,6 +1371,7 @@ function App() {
                         G
                       </p>
                     )}
+                    <details><summary>정산 상세 보기</summary>
                     <table className="settlement-ledger">
                       <caption>한 번의 정산 · 양측 금액</caption>
                       <thead>
@@ -1560,6 +1417,7 @@ function App() {
                         ))}
                       </tbody>
                     </table>
+                    </details>
                     {!splitPots && (
                       <p>이전 판 보호 조정: {g.settlement.protection} G</p>
                     )}
@@ -1617,6 +1475,7 @@ function App() {
                       </div>
                     )}
                   </section>
+                  </ResultDialog>
                 )}
                 <div className="garden-quote">
                   <span>❦</span>
@@ -1704,6 +1563,113 @@ function App() {
               <>
                 <div className="panel-eyebrow">HOW TO PLAY</div>
                 <h2>정원의 규칙</h2>
+              <div className="lobby-columns">
+                <section>
+                  <h3>♜ 체스 합산 배당 · {pool} G</h3>
+                  <p>
+                    승자가 합산 {pool} G를 받고, 무승부는 이 금액이 포커로
+                    이월됩니다. 배당은 포커 종료까지 보관하며 이번 포커에 다시
+                    걸 수 없습니다.
+                  </p>
+                </section>
+                <section>
+                  <h3>♠ 포커 합산 배당 · {fee * 2 - pool} G</h3>
+                  <p>
+                    전환 시 추가 참가금 없이 생존 카드 다섯 장으로 겨룹니다.
+                    추가 베팅으로 팟을 키울 수 있고, 족보·숫자·무늬 순서로
+                    결정한 승자가 유효 팟을 받습니다.
+                  </p>
+                </section>
+              </div>
+              <p className="fine-print">
+                가상 골드만 사용합니다. 최소 잔액 보장은 없습니다. 다음 판
+                참가금은 {CURRENT_ENTRY} G이며 그 미만이면 파산합니다.
+              </p>
+              <div className="lobby-columns">
+                <section>
+                  <h3>각각 이기거나 지면?</h3>
+                  <p>추가 베팅이 없을 때, 내 시작 잔액 대비 손익입니다.</p>
+                  <table className="outcome-table">
+                    <thead>
+                      <tr>
+                        <th>체스</th>
+                        <th>포커</th>
+                        <th>내 손익</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        ["승리", "승리", `+${fee} G`],
+                        [
+                          "승리",
+                          "패배·폴드",
+                          `${pool - fee > 0 ? "+" : ""}${pool - fee} G`,
+                        ],
+                        [
+                          "패배",
+                          "승리",
+                          `${fee - pool > 0 ? "+" : ""}${fee - pool} G`,
+                        ],
+                        ["패배", "패배·폴드", `−${fee} G`],
+                        [
+                          "무승부",
+                          "승리",
+                          `+${g.economy === "split-15-5" ? pokerShare : fee} G`,
+                        ],
+                        [
+                          "무승부",
+                          "패배·폴드",
+                          `−${g.economy === "split-15-5" ? pokerShare : fee} G`,
+                        ],
+                      ].map((row) => (
+                        <tr key={row.join()}>
+                          {row.map((cell, i) => (
+                            <td key={i}>{cell}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="fine-print">
+                    포커는 ♠ → ♥ → ♦ → ♣ 순서까지 비교해 승자를 정합니다. 체스
+                    승리 뒤 포커 폴드의 기본 손익은 {pool - fee} G입니다. 새
+                    규칙은 잔액을 보충하지 않으며 5판마다 참가금을 올리지
+                    않습니다.
+                  </p>
+                </section>
+                <section>
+                  <h3>포커에서 무엇을 선택하나요?</h3>
+                  <dl className="action-guide">
+                    <dt>체크</dt>
+                    <dd>
+                      맞춰 낼 금액이 없을 때 추가 베팅 없이 넘깁니다. 서로
+                      체크하면 이미 걸린 팟으로 승부를 봅니다.
+                    </dd>
+                    <dt>폴드</dt>
+                    <dd>
+                      포커를 포기합니다. 개인 포커 몫 {pokerShare} G와 이미 맞춘
+                      추가 베팅을 잃습니다. 확정된 체스 배당은 유지되지만 체스가
+                      무승부면 이월된 체스 몫 {chessShare} G도 잃습니다.
+                    </dd>
+                    <dt>콜</dt>
+                    <dd>
+                      상대 베팅에 맞춰 냅니다. 부족하면 남은 금액만 걸고
+                      올인합니다.
+                    </dd>
+                    <dt>베트 / 레이즈</dt>
+                    <dd>
+                      판돈을 추가하거나 올립니다. 최소 추가 베팅·정상 인상폭은
+                      20 G입니다.
+                    </dd>
+                    <dt>올인</dt>
+                    <dd>
+                      금고에 남은 골드를 모두 겁니다. 상대가 맞추지 못한
+                      초과액은 돌려받습니다.
+                    </dd>
+                  </dl>
+                </section>
+              </div>
+
                 <ol className="rules">
                   <li>
                     <b>입장</b>새 게임은 각 1,000 G. 각자 50 G를 한 번

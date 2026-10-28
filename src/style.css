@@ -2651,3 +2651,33 @@ input[type="checkbox"] {
   .chess-scene .square .identity.red { color: #a02e28; }
   .chess-scene .square .identity.concealed { background: #243c35; color: #efdfb3; }
 }
+
+/* Keep the board in view; results use the browser's focus-trapped top layer. */
+.result-dialog {
+  width: min(92vw, 480px); max-height: 85dvh; overflow-y: auto;
+  padding: 18px; border: 1px solid #c6ad72; border-radius: 16px;
+  background: #15382d; color: #f5e9c8;
+  box-shadow: 0 20px 70px #0008;
+}
+.result-dialog::backdrop { background: #061c1699; }
+.result-dialog .chess-end-banner,
+.result-dialog .result-panel { border: 0; padding: 12px 0; margin: 0; background: transparent; }
+.result-dialog .result-icon { font-size: 32px; margin: 0; }
+.result-dialog h2 { font-size: 25px; }
+.result-dialog details { margin: 16px 0; }
+.result-dialog summary { cursor: pointer; padding: 8px; }
+.result-dismiss { display: block; margin-left: auto; }
+.result-reopen { margin: 8px; }
+.sidebar .overview, .garden-quote, .rules-version { display: none; }
+.lobby { max-width: 560px; margin: 16px auto; }
+.lobby-stakes { gap: 8px; }
+@media (max-width: 700px) {
+  .stake-summary { padding: 8px; font-size: 13px; }
+  .stake-summary > span { display: none; }
+  .phase-bar { padding: 10px; }
+  .sidebar .move-panel { display: none; }
+  .lobby-stakes { grid-template-columns: 1fr; }
+  .lobby-stakes article { padding: 8px; }
+  .lobby-stakes article small { display: none; }
+  .lobby-stakes article strong { font-size: 22px; }
+}
