@@ -79,6 +79,8 @@ function PlayingCard({
   onClick,
   small = false,
   role,
+  side,
+  revealed,
 }: {
   card?: Card;
   hidden?: boolean;
@@ -86,10 +88,12 @@ function PlayingCard({
   onClick?: () => void;
   small?: boolean;
   role?: ChessRole;
+  side?: Side;
+  revealed?: boolean;
 }) {
-  const className = `playing-card ${role ? "character-card" : ""} ${hidden ? "back" : ""} ${card?.suit === "D" || card?.suit === "H" ? "red" : ""} ${selected ? "picked" : ""} ${small ? "small" : ""}`;
+  const className = `playing-card ${revealed === undefined ? "" : revealed ? "card-revealed" : "card-unrevealed"} ${role ? "character-card" : ""} ${hidden ? "back" : ""} ${card?.suit === "D" || card?.suit === "H" ? "red" : ""} ${selected ? "picked" : ""} ${small ? "small" : ""}`;
   const content = role ? (
-    <Checard role={role} card={hidden ? undefined : card} hidden={hidden} />
+    <Checard role={role} card={hidden ? undefined : card} hidden={hidden} side={side} />
   ) : hidden ? (
     <>
       <span className="back-diamond">✦</span>
@@ -123,7 +127,7 @@ function PlayingCard({
   ) : (
     <div
       className={className}
-      aria-label={hidden ? "비공개 카드" : card ? label(card) : ""}
+      aria-label={`${hidden ? "비공개 카드" : card ? label(card) : ""}${revealed === undefined ? "" : revealed ? " · 공개됨" : " · 상대에게 비공개"}`}
     >
       {content}
     </div>
@@ -867,7 +871,7 @@ function App() {
                                       <span className="mobile-chess-piece" aria-hidden="true">
                                         {{ k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" }[piece.type]}{"\uFE0E"}
                                       </span>
-                                      <Checard role={piece.type} card={piece.color === "w" ? card : undefined} hidden={piece.color === "b"} side={piece.color} />
+                                      <Checard role={piece.type} card={piece.color === "w" ? card : undefined} hidden={piece.color === "b"} side={piece.color} board />
                                     </span>
                                     <span
                                       className={`identity ${piece.color === "b" ? "concealed" : card?.suit === "D" || card?.suit === "H" ? "red" : ""}`}
@@ -927,6 +931,8 @@ function App() {
                         {Array.from({ length: 5 }, (_, i) => (
                           <PlayingCard
                             key={i}
+                            side="b"
+                            revealed={Boolean(exposedHand(g, "b")[i])}
                             hidden={!exposedHand(g, "b")[i]}
                             card={exposedHand(g, "b")[i]}
                             role={roleFor(exposedHand(g, "b")[i]) ?? "p"}
@@ -981,6 +987,8 @@ function App() {
                             {g.hands.w.map((card) => (
                               <PlayingCard
                                 key={card.id}
+                                side="w"
+                                revealed={exposedHand(g, "w").some((shown) => shown.id === card.id)}
                                 card={card}
                                 role={Object.entries(g.identities).reduce<
                                   ChessRole | undefined

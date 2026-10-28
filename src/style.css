@@ -2681,3 +2681,41 @@ input[type="checkbox"] {
   .lobby-stakes article small { display: none; }
   .lobby-stakes article strong { font-size: 22px; }
 }
+
+/* Five proportional characters fit the hand; public cards step forward. */
+.checard-side-w > svg { filter: grayscale(1) contrast(.4) brightness(1.5); }
+.checard-side-b > svg { filter: grayscale(1) contrast(.6) brightness(.45); }
+.poker-scene .opponent-hand,
+.poker-scene .own-hand {
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+  width: 100%; max-width: 620px; min-width: 0;
+  gap: clamp(2px, 1vw, 10px); padding: 18px 4px 24px;
+  box-sizing: border-box; align-items: end;
+}
+.poker-scene .opponent-hand .character-card,
+.poker-scene .own-hand .character-card {
+  width: 100%; min-width: 0; height: auto; aspect-ratio: 300 / 580;
+  margin: 0; transform-origin: center bottom;
+  transition: transform .25s ease, filter .25s ease;
+}
+.poker-scene .character-card > .checard {
+  display: block; width: 100%; height: 100%; animation: none;
+}
+.poker-scene .character-card.card-revealed {
+  transform: translateY(10px); z-index: 2;
+  filter: drop-shadow(0 4px 3px #171b1680);
+}
+.poker-scene .character-card.card-revealed::after {
+  content: '공개'; position: absolute; bottom: -20px; left: 0; right: 0;
+  height: auto; border-radius: 4px; background: #f4e3b9; color: #253a2c;
+  font-size: 11px; line-height: 18px; text-align: center; filter: none; z-index: 1;
+}
+.poker-scene .character-card.card-unrevealed {
+  transform: translateY(-6px) scale(.88); filter: brightness(.78); z-index: 1;
+}
+.poker-scene .character-card .checard-value {
+  font-size: clamp(10px, 2.5vw, 22px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .poker-scene .character-card { transition: none; }
+}

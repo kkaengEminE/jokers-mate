@@ -16,16 +16,18 @@ export function Checard({
   card,
   hidden = false,
   side,
+  board = false,
 }: {
   role: ChessRole;
   card?: Card;
   hidden?: boolean;
   side?: "w" | "b";
+  board?: boolean;
 }) {
   const [x, y] = CELLS[role];
   return (
     <span
-      className={`checard ${side ? `checard-board checard-side-${side}` : ""} ${hidden ? "checard-hidden" : ""} ${card && !hidden && (card.suit === "H" || card.suit === "D") ? "checard-red" : ""}`}
+      className={`checard ${board ? "checard-board" : ""} ${side ? `checard-side-${side}` : ""} ${hidden ? "checard-hidden" : ""} ${card && !hidden && (card.suit === "H" || card.suit === "D") ? "checard-red" : ""}`}
       aria-hidden="true"
     >
       <svg viewBox={`${x} ${y} 300 580`} focusable="false">
