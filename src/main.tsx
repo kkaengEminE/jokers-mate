@@ -31,7 +31,6 @@ import {
   nextRound,
   finishEnding,
   campaignOutcome,
-  abandon,
 } from "./campaign";
 import { restore } from "./persistence";
 import "./style.css";
@@ -58,7 +57,7 @@ function initial(): Game {
   try {
     const raw = localStorage.getItem(STORAGE),
       saved = restore(raw);
-    if (saved) return abandon(saved);
+    if (saved) return saved;
     if (raw) localStorage.setItem(STORAGE + "-recovery", raw);
   } catch {}
   return newCampaign();
@@ -476,13 +475,6 @@ function App() {
     return () => document.removeEventListener("visibilitychange", pauseHidden);
   }, [g.phase, titleScreen]);
   function returnToMenu() {
-    if (
-      g.phase !== "lobby" &&
-      g.phase !== "result" &&
-      !confirm(`대국을 포기하면 납부한 ${g.committed.w}G를 잃습니다. 나갈까요?`)
-    )
-      return;
-    setG(abandon(g));
     setTitleScreen(true);
     setModal(null);
   }
@@ -675,7 +667,7 @@ function App() {
                 </p>
               )}
               <p>
-                참가 후 창을 닫거나 새로고침하면 미완료 판은 도주 패배가 됩니다.
+                진행 상황은 자동 저장됩니다. 창을 닫거나 새로고침해도 이어하기로 계속할 수 있습니다.
                 납부액을 잃으며, 완료된 정산은 보존됩니다.
               </p>
               <p>
@@ -989,9 +981,7 @@ function App() {
                                     <span
                                       className={`piece ${piece.color === "w" ? "ivory" : "onyx"}`}
                                     >
-                                      <span className="chess-symbol" aria-hidden="true">
-                                        {{ k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" }[piece.type]}
-                                      </span>
+                                      <Checard role={piece.type} card={piece.color === "w" ? card : undefined} hidden={piece.color === "b"} side={piece.color} />
                                     </span>
                                     <span
                                       className={`identity ${piece.color === "b" ? "concealed" : card?.suit === "D" || card?.suit === "H" ? "red" : ""}`}
@@ -1837,7 +1827,7 @@ function App() {
                       returnToMenu();
                     }}
                   >
-                    메인으로 · 진행 중이면 대국 포기
+                    저장하고 메인으로
                   </button>
                 </div>
                 <small>

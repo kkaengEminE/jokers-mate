@@ -78,3 +78,26 @@ it("selects a complete legal hand from sixteen survivors with two jokers", () =>
   expect(hand.cards).toHaveLength(5);
   expect(new Set(hand.resolved.map((c) => c.id)).size).toBe(5);
 }, 30000);
+
+it("resumes an R4 round at its saved stage without forfeiture or restarting chess", () => {
+  let g = basenewGame(undefined, undefined, "r4");
+  const resume = () => {
+    const saved = restore(JSON.stringify(g));
+    expect(saved).toEqual(g);
+    expect(saved?.abandoned).not.toBe(true);
+    expect(saved?.settlement).toBeNull();
+    return saved!;
+  };
+  g = applyMove(g, "f3");
+  g = resume();
+  for (const move of ["e5", "g4", "Qh4#"]) g = applyMove(g, move);
+  expect(g.phase).toBe("selection");
+  g = { ...g, chessReviewed: true };
+  g = resume();
+  g = startBetting(g, survivors(chessOf(g), g.identities, "w").slice(0, 5), survivors(chessOf(g), g.identities, "b").slice(0, 5));
+  g = act(g, "w", { type: "raise", amount: 100 });
+  const saved = resume();
+  expect(saved.phase).toBe("betting");
+  expect(saved.betting?.turn).toBe("b");
+  expect(restore(JSON.stringify(saved))).toEqual(saved);
+});
