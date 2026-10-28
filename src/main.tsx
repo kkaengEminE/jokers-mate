@@ -162,7 +162,6 @@ function App() {
     }
   });
   const [titleScreen, setTitleScreen] = useState(true);
-  const [exited, setExited] = useState(false);
   const [g, updateG] = useState<Game>(initial),
     [records, setRecords] = useState<RecordEntry[]>(readRecords);
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null),
@@ -499,7 +498,7 @@ function App() {
     setError("");
   }
   function restart() {
-    setG(newCampaign());
+    setG({ ...newCampaign(), journey: { opponent: "roan", screen: "play" } });
     setSelectedCards([]);
     setSelectedSquare(null);
     setModal(null);
@@ -548,7 +547,7 @@ function App() {
     URL.revokeObjectURL(url);
   }
   return (
-    <div className={`app ${motion ? "" : "no-motion"}`}>
+    <div className={`app ${motion ? "" : "no-motion"} ${titleScreen ? "home-view" : ""} ${!titleScreen && !storyVisible && g.phase === "betting" ? "betting-view" : ""}`}>
       <header className="masthead">
         <a className="wordmark" href="#" onClick={(e) => e.preventDefault()}>
           <span className="brand-icon">♜</span>
@@ -557,11 +556,7 @@ function App() {
           </span>
         </a>
         <nav aria-label="메뉴">
-          <button onClick={() => setModal("help")}>게임 규칙</button>
-          <button onClick={() => setModal("records")}>
-            기록 <span className="count">{records.length}</span>
-          </button>
-          <button onClick={() => setModal("settings")}>설정</button>
+          <button className="help-button" onClick={() => setModal("help")} aria-label="도움말">?</button>
           <button
             className="menu-button"
             onClick={() => setModal("menu")}
@@ -574,61 +569,38 @@ function App() {
       <main>
         {titleScreen && (
           <section className="title-screen" aria-label="메인 메뉴">
-            <div className="palace-gate" aria-hidden="true">
-              ♜ <span>♛</span> ♜
-            </div>
+            <div className="title-emblem" aria-hidden="true">♛</div>
             <div className="eyebrow">THE ROYAL GARDEN</div>
-            <h1>
-              JOKER’S
-              <br />
-              MATE
-            </h1>
-            <p>
-              {exited
-                ? "진행 상황을 저장했습니다. 이 탭을 닫아 나갈 수 있습니다."
-                : "왕실 정원의 체스판에서, 마지막 다섯 장의 승부까지."}
-            </p>
+            <h1>JOKER’S<br />MATE</h1>
+            <p className="title-tagline">체스의 한 수, 포커의 한 장.</p>
+            {storyScreen !== "prologue" && canContinue && (
+              <span className="save-badge">● ROUND {g.round} · {g.phase === "chess" ? "체스 진행 중" : g.phase === "betting" ? "포커 진행 중" : g.phase === "selection" ? "카드 선택" : g.phase === "result" ? "결과 확인" : "대국 준비"}</span>
+            )}
             <div className="title-actions">
               {outcome === "failed" && storyScreen !== "failed" && (
-                <button
-                  className="primary"
-                  onClick={() => setTitleScreen(false)}
-                >
-                  패배 결과 확인
-                </button>
+                <button className="primary" onClick={() => setTitleScreen(false)}>결과 확인</button>
               )}
               {canContinue && (
-                <button
-                  className="primary"
-                  onClick={() => {
-                    setTitleScreen(false);
-                    setExited(false);
-                  }}
-                >
-                  {storyScreen === "prologue" ? "시작하기" : "이어하기"}
-                </button>
+                <button className="primary" onClick={() => {
+                  if (storyScreen === "prologue") setG({ ...g, journey: { opponent: "roan", screen: "play" } });
+                  setTitleScreen(false);
+                }}>{storyScreen === "prologue" ? "게임 시작" : "이어하기"}<span aria-hidden="true"> →</span></button>
               )}
-              <button
-                onClick={() => {
-                  if (
-                    storyScreen === "prologue" ||
-                    !canContinue ||
-                    confirm("현재 이야기를 지우고 로언부터 새로 시작할까요?")
-                  ) {
+              {storyScreen !== "prologue" && (
+                <button className={canContinue ? "secondary-start" : "primary"} onClick={() => {
+                  if (!canContinue || confirm("현재 이야기를 지우고 새 게임을 시작할까요?")) {
                     restart();
                     setTitleScreen(false);
                   }
-                }}
-              >
-                새로하기
-              </button>
-              <button onClick={() => setModal("settings")}>설정</button>
-              <button onClick={() => setExited(true)}>나가기</button>
+                }}>새 게임</button>
+              )}
             </div>
             <div className="title-links">
-              <button onClick={() => setModal("help")}>게임 규칙</button>
+              <button onClick={() => setModal("help")}>플레이 방법</button>
+              <button onClick={() => setModal("settings")}>설정</button>
               <button onClick={() => setModal("records")}>기록</button>
             </div>
+            <span className="title-save-note">진행 상황 자동 저장</span>
           </section>
         )}
         {!titleScreen && storyVisible && (
@@ -653,9 +625,6 @@ function App() {
                   : g.journey?.opponent === "emperor"
                     ? "아우렐리온의 금고가 닫히고 킹과 퀸의 왕관이 내려온다. 리브는 체스 기물과 카드가 쌓인 높은 왕좌를 바라본다. 이름을 되찾으러 온 사람이 이제 새로운 황제가 되었다."
                     : "로언이 이름 장부를 돌려주었다. 리브의 이름 아래, 또 하나의 초대장이 놓여 있다. 왕실의 마지막 상대, 조커 황제 아우렐리온이 기다린다."}
-            </p>
-            <p className="fine-print">
-              검증용 이야기 · 캐릭터와 최종 일러스트는 추후 확정
             </p>
             {storyScreen === "prologue" ? (
               <button
@@ -683,37 +652,15 @@ function App() {
         <div hidden={titleScreen || storyVisible}>
           {g.phase === "lobby" ? (
             <section className="lobby panel" aria-label="게임 시작">
-              <div className="panel-eyebrow">
-                TAKE YOUR SEAT · ROUND {g.round}
+              <div className="panel-eyebrow">ROUND {String(g.round).padStart(2, "0")}</div>
+              <h2>왕실 정원의 대국</h2>
+              <div className="matchup">
+                <div className="match-player"><span className="match-avatar white" aria-hidden="true">♔</span><strong>당신</strong><small>{g.banks.w.toLocaleString()} G</small></div>
+                <span className="versus" aria-hidden="true">VS</span>
+                <div className="match-player"><span className="match-avatar black" aria-hidden="true">{g.journey?.opponent === "emperor" ? "♚" : "♞"}</span><strong>{g.journey?.opponent === "emperor" ? "아우렐리온" : "로언"}</strong><small>{g.banks.b.toLocaleString()} G</small></div>
               </div>
-              <h2>{opponentName}의 초대</h2>
-              {g.economy !== "r4" && (
-                <p>
-                  이전 규칙으로 저장된 판입니다. 이 판은 참가금 {fee} G로 마치고
-                  다음 판부터 50 G·40/60 규칙을 적용합니다.
-                </p>
-              )}
-              <p>자동 저장 · 언제든 이어하기</p>
-              <div className="lobby-stakes">
-                <article>
-                  <span>내 현재 잔액</span>
-                  <strong>{g.banks.w.toLocaleString()} G</strong>
-                  <small>
-                    상대 {g.banks.b.toLocaleString()} G · 아직 납부하지
-                    않았습니다
-                  </small>
-                </article>
-                <article>
-                  <span>이번 판에 걸 골드</span>
-                  <strong>{fee} G</strong>
-                  <small>한 번만 납부 · 수수료 없음</small>
-                </article>
-                <article>
-                  <span>시작 후 내 금고</span>
-                  <strong>{(g.banks.w - fee).toLocaleString()} G</strong>
-                  <small>상대도 {fee} G를 냅니다</small>
-                </article>
-              </div>
+              <div className="entry-ticket"><span>참가금</span><strong>{fee} <small>G</small></strong><span>내 잔액 {g.banks.w.toLocaleString()} → {(g.banks.w - fee).toLocaleString()} G</span></div>
+              {g.economy !== "r4" && <p className="fine-print">저장된 판은 참가금 {fee} G로 진행합니다.</p>}
               <button
                 className="primary full"
                 onClick={() => {
@@ -728,32 +675,17 @@ function App() {
                   }
                 }}
               >
-                {fee} G 걸고 {g.round === 1 ? "시작하기" : "다음 판 시작하기"} →
+                {fee} G · 대국 시작 →
               </button>
-              <button className="full" onClick={() => setModal("help")}>도움말 · 배당과 베팅 규칙</button>
+              <button className="lobby-help" onClick={() => setModal("help")}>처음이라면? 플레이 방법</button>
             </section>
           ) : (
             <div className="game-layout">
               <section
-                className={`arena garden-arena ${revealFrame.active && !settlementVisible ? "showdown-scene" : ""} ${g.phase === "chess" || reviewingChess ? "chess-scene" : "poker-scene"}`}
+                className={`arena garden-arena ${revealFrame.active && !settlementVisible ? "showdown-scene" : ""} ${g.phase === "selection" && !reviewingChess ? "selection-scene" : ""} ${g.phase === "chess" || reviewingChess ? "chess-scene" : "poker-scene"}`}
                 aria-label="게임 테이블"
               >
                 <GoldProcession game={g} paused={titleScreen || !motion || !settlementVisible} />
-                {g.phase === "chess" && g.moves.length === 0 && (
-                  <div
-                    className="entry-procession"
-                    aria-label="종자가 참가금을 중앙에 운반합니다"
-                  >
-                    <span className="entry-squire">
-                      ♙<b>♣</b>
-                    </span>
-                    <span className="entry-cart">
-                      ● ● ●<small>◉━━◉</small>
-                    </span>
-                    <strong>양쪽 금고 → 중앙 판돈 · 각 {fee} G</strong>
-                  </div>
-                )}
-
                 {reviewingChess && (
                   <ResultDialog title="체스 결과" active={!titleScreen && !storyVisible && !modal}>
                   <div
@@ -838,10 +770,10 @@ function App() {
                         )}
                       </div>
                     </div>
-                    <div className="captures">
-                      <span>
+                    <details className="captures">
+                      <summary>
                         기사가 잡은 카드 <b>{g.captured.b.length}</b>
-                      </span>
+                      </summary>
                       <div>
                         {g.captured.b.length ? (
                           g.captured.b.map((x) => (
@@ -858,7 +790,7 @@ function App() {
                           <small>아직 비어 있습니다</small>
                         )}
                       </div>
-                    </div>
+                    </details>
                   </div>
                   {g.phase === "chess" || reviewingChess ? (
                     <div className="board-shell">
@@ -954,7 +886,7 @@ function App() {
                       ) : g.betting?.street !== undefined && (
                         <div className="reveal-stage" role="status">
                           베팅 {g.betting.street + 1} / 3 · 양측 {g.betting.street + 1}장 공개
-                          {g.phase === "result" ? " · 종료" : " · 라운드 종료 후 다음 공개"}
+                          {g.phase === "result" ? " · 종료" : ""}
                         </div>
                       )}
                       <div className="opponent-hand">
@@ -1021,14 +953,6 @@ function App() {
                         </div>
                       ) : (
                         <>
-                          {g.betting?.street !== undefined &&
-                            g.phase !== "result" && (
-                              <p className="reveal-stage">
-                                내 공개 카드:{" "}
-                                {publicHand("w").map(label).join(" · ")} ·
-                                나머지는 상대에게 비공개
-                              </p>
-                            )}
                           <div className="own-hand">
                             {g.hands.w.map((card, i) => (
                               <PlayingCard
@@ -1072,10 +996,10 @@ function App() {
                     </div>
                   )}
                   <div className="player-row self-row">
-                    <div className="captures">
-                      <span>
+                    <details className="captures">
+                      <summary>
                         내가 잡은 카드 <b>{g.captured.w.length}</b>
-                      </span>
+                      </summary>
                       <div>
                         {g.captured.w.length ? (
                           g.captured.w.map((x) => (
@@ -1092,7 +1016,7 @@ function App() {
                           <small>첫 번째 기회를 기다리는 중</small>
                         )}
                       </div>
-                    </div>
+                    </details>
                     <div className="vault">
                       <div>
                         <span className="player-name">
@@ -1109,14 +1033,6 @@ function App() {
                     </div>
                   </div>
                 </div>
-                <nav className="rule-books" aria-label="규칙책">
-                  <button onClick={() => setModal("help")}>
-                    <span aria-hidden="true">♜</span> 체스 규칙책
-                  </button>
-                  <button onClick={() => setModal("help")}>
-                    <span aria-hidden="true">♠</span> 포커 규칙책
-                  </button>
-                </nav>
                 <div className="status-bar" role="status">
                   <span className={`status-dot ${busy ? "thinking" : ""}`} />
                   {status}
@@ -1218,7 +1134,7 @@ function App() {
                 {g.phase === "selection" && !reviewingChess && (
                   <section className="panel selection-panel">
                     <div className="panel-title">
-                      <h3>내 생존 카드 · 선택 순서가 공개 순서</h3>
+                      <h3>함께할 다섯 장을 고르세요</h3>
                       <span>{selectedCards.length} / 5</span>
                     </div>
                     <div className="card-picker">
@@ -1240,6 +1156,7 @@ function App() {
                         />
                       ))}
                     </div>
+                    <details className="selection-guide"><summary>공개 순서 확인</summary>
                     <p className="reveal-plan">
                       선택한 1·2·3번째 카드를 순서대로 공개합니다. 4·5번째는
                       마지막까지 비공개입니다. 카드를 다시 누르면 선택을 취소해
@@ -1252,6 +1169,7 @@ function App() {
                         )
                         .join(" → ")}
                     </p>
+                    </details>
                     <p className="selection-name">
                       {selectedName || "다섯 장을 선택하면 족보가 표시됩니다."}
                     </p>
@@ -1287,25 +1205,12 @@ function App() {
                 {g.phase === "betting" && (
                   <section className="panel betting-panel">
                     <div className="panel-title">
-                      <h3>베팅 라운드</h3>
-                      <span>
-                        {g.betting?.street === undefined
-                          ? "1 / 1"
-                          : `${g.betting.street + 1} / 3`}
-                      </span>
+                      <h3>{options.active ? "당신의 선택" : "상대가 생각하는 중…"}</h3>
+                      <span>{g.hands.w.length === 5 ? evaluate(g.hands.w).name : ""}</span>
                     </div>
                     <div className="bet-summary">
-                      <span>
-                        포커 투입{" "}
-                        <b>{g.committed.w - (splitPots ? chessShare : 0)} G</b>
-                      </span>
-                      <span>
-                        상대 포커 투입{" "}
-                        <b>{g.committed.b - (splitPots ? chessShare : 0)} G</b>
-                      </span>
-                      <span>
-                        콜 필요 <b>{Math.min(options.owed, options.left)} G</b>
-                      </span>
+                      <span>내 금고 <b>{options.left.toLocaleString()} G</b></span>
+                      <span>콜 필요 <b>{Math.min(options.owed, options.left)} G</b></span>
                     </div>
                     <div className="action-grid">
                       <button
@@ -1326,6 +1231,7 @@ function App() {
                         ⚑ 폴드
                       </button>
                     </div>
+                    <details className="raise-options"><summary>더 베팅하기 · 레이즈 / 올인</summary>
                     <label className="raise-label">
                       포커 총 투입액으로 베트 / 레이즈
                       <input
@@ -1373,11 +1279,15 @@ function App() {
                       최소 인상폭 {g.betting!.lastRaise} G · 미대응 초과액은
                       반환됩니다.
                     </p>
+                    </details>
+                    <details className="bet-history"><summary>베팅 기록 · 투입액</summary>
+                    <p className="fine-print">내 포커 투입 {g.committed.w - (splitPots ? chessShare : 0)} G · 상대 포커 투입 {g.committed.b - (splitPots ? chessShare : 0)} G</p>
                     <div className="bet-log" aria-live="polite">
                       {g.betting!.log.map((x, i) => (
                         <div key={i}>{x}</div>
                       ))}
                     </div>
+                    </details>
                   </section>
                 )}
                 {g.phase === "result" && g.settlement && settlementVisible && (
@@ -1558,13 +1468,13 @@ function App() {
             </div>
           )}
         </div>
-        <footer>
+        {titleScreen && <footer>
           <span>♠ ♥ ♦ ♣</span>
           <p>
             JOKER’S MATE <i>·</i> 가상 골드만 사용하는 전략 게임
           </p>
           <small>PROTOTYPE · 0.2</small>
-        </footer>
+        </footer>}
       </main>
       {promotion && (
         <div className="modal-backdrop">
@@ -1617,7 +1527,9 @@ function App() {
             {modal === "help" && (
               <>
                 <div className="panel-eyebrow">HOW TO PLAY</div>
-                <h2>정원의 규칙</h2>
+                <h2>플레이 방법</h2>
+                <p className="help-intro">체스에서 살아남은 카드 다섯 장으로 포커 승부를 겨룹니다.</p>
+                <details className="invitation"><summary>이야기 · 정원의 초대</summary><p>카드 복원사 리브에게 이름이 지워진 초대장이 도착했다. 정원의 문지기 로언은 말한다. 체스에서 왕을 지키고, 살아남은 다섯 장으로 너의 이름을 되찾아라.</p></details>
               <div className="lobby-columns">
                 <section>
                   <h3>♜ 체스 합산 배당 · {pool} G</h3>
@@ -1823,16 +1735,16 @@ function App() {
                 <p>진행 상황이 이 브라우저에 저장됩니다.</p>
                 <div className="menu-actions">
                   <button className="primary" onClick={() => setModal(null)}>
-                    Play · 계속하기
+                    계속하기
                   </button>
                   <button onClick={() => setModal("help")}>
-                    Help · 게임 규칙
+                    플레이 방법
                   </button>
                   <button onClick={() => setModal("records")}>
-                    Records · 기록
+                    대국 기록
                   </button>
                   <button onClick={() => setModal("settings")}>
-                    Settings · 설정
+                    설정
                   </button>
                   <button
                     onClick={() => {
@@ -1844,7 +1756,7 @@ function App() {
                         restart();
                     }}
                   >
-                    새 전체 게임
+                    새 게임
                   </button>
                   <button
                     onClick={() => {
@@ -1854,9 +1766,7 @@ function App() {
                     저장하고 메인으로
                   </button>
                 </div>
-                <small>
-                  나가려면 이 탭을 닫으세요. 브라우저 탭을 강제로 닫지 않습니다.
-                </small>
+
               </>
             )}
             {modal === "records" && (
