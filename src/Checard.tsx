@@ -32,6 +32,7 @@ export function Checard({
     >
       <svg viewBox={`${x} ${y} 300 580`} focusable="false">
         <image href={`${import.meta.env.BASE_URL}art/checards-v1.png`} width="1358" height="1158" />
+        <rect className="checard-paper" x={x + 67} y={y + 232} width="166" height="232" rx="6" />
       </svg>
       <span className="checard-value">
         {hidden ? "✦" : card ? (card.suit === "J" ? "JK" : label(card)) : ""}

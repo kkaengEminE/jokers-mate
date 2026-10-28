@@ -2614,8 +2614,8 @@ input[type="checkbox"] {
   filter: none; text-shadow: none;
 }
 .checard-board { height: 100%; aspect-ratio: 300 / 580; }
-.checard-side-w > svg { filter: grayscale(1) brightness(1.6) contrast(.65); }
-.checard-side-b > svg { filter: grayscale(1) brightness(.5); }
+.checard-side-w > svg > image { filter: grayscale(1) brightness(1.6) contrast(.65); }
+.checard-side-b > svg > image { filter: grayscale(1) brightness(.5); }
 .mobile-chess-piece { display: none; }
 @media (max-width: 700px) {
   .garden-arena.chess-scene .board-shell { transform: none; padding: 2%; }
@@ -2683,8 +2683,8 @@ input[type="checkbox"] {
 }
 
 /* Five proportional characters fit the hand; public cards step forward. */
-.checard-side-w > svg { filter: grayscale(1) contrast(.4) brightness(1.5); }
-.checard-side-b > svg { filter: grayscale(1) contrast(.6) brightness(.45); }
+.checard-side-w > svg > image { filter: grayscale(1) contrast(.4) brightness(1.5); }
+.checard-side-b > svg > image { filter: grayscale(1) contrast(.6) brightness(.45); }
 .poker-scene .opponent-hand,
 .poker-scene .own-hand {
   display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -2711,7 +2711,7 @@ input[type="checkbox"] {
   font-size: 11px; line-height: 18px; text-align: center; filter: none; z-index: 1;
 }
 .poker-scene .character-card.card-unrevealed {
-  transform: translateY(-6px) scale(.88); filter: brightness(.78); z-index: 1;
+  transform: translateY(-6px) scale(.88); filter: none; z-index: 1;
 }
 .poker-scene .character-card .checard-value {
   font-size: clamp(10px, 2.5vw, 22px);
@@ -2719,3 +2719,10 @@ input[type="checkbox"] {
 @media (prefers-reduced-motion: reduce) {
   .poker-scene .character-card { transition: none; }
 }
+
+/* Card paper stays neutral: side tint belongs to the character image only. */
+.checard-paper { fill: #fff4d9; }
+.poker-scene .card-unrevealed .checard-paper,
+.poker-scene .card-unrevealed .checard-value { filter: brightness(.72); }
+.poker-scene .card-revealed .checard-paper,
+.poker-scene .card-revealed .checard-value { filter: none; }
