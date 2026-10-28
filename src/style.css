@@ -2726,3 +2726,39 @@ input[type="checkbox"] {
 .poker-scene .card-unrevealed .checard-value { filter: brightness(.72); }
 .poker-scene .card-revealed .checard-paper,
 .poker-scene .card-revealed .checard-value { filter: none; }
+
+/* Showdown stays on the table until the player chooses to see the ledger. */
+.showdown-prompt {
+  width: min(320px, 100%); box-sizing: border-box; text-align: center;
+  padding: 14px 18px; margin: 4px auto; border: 1px solid #b99b59;
+  border-radius: 12px; background: #17382ef5; color: #f6e9c7;
+  min-height: 130px; box-shadow: 0 6px 18px #13201844;
+}
+.showdown-prompt h2 { margin: 4px 0; color: #f6d784; font-size: 32px; }
+.showdown-prompt p { margin: 8px 0 12px; font-size: 13px; line-height: 1.6; }
+.showdown-prompt button { min-height: 42px; }
+.poker-table { scroll-margin-top: 12px; }
+.poker-scene .card-spotlight .checard-value {
+  animation: showdown-turn .55s ease-out both;
+  box-shadow: 0 0 0 2px #f4d576, 0 0 14px #ffe7a5;
+}
+.showdown-prompt.verdict { animation: showdown-verdict .35s ease-out both; }
+@keyframes showdown-turn {
+  from { transform: perspective(400px) rotateY(85deg); }
+  to { transform: perspective(400px) rotateY(0); }
+}
+@keyframes showdown-verdict {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 700px) {
+  .showdown-scene .captures, .showdown-scene .rule-books { display: none; }
+  .showdown-scene .poker-table { padding: 8px 4px; gap: 4px; }
+  .showdown-scene .reveal-stage { font-size: 12px; padding: 6px 8px; }
+  .showdown-scene .hand-name { font-size: 12px; padding: 3px 8px; margin: 0; }
+  .showdown-scene .showdown-prompt { padding: 10px 14px; }
+}
+.no-motion .card-spotlight .checard-value, .no-motion .showdown-prompt.verdict { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+  .poker-scene .card-spotlight .checard-value, .showdown-prompt.verdict { animation: none; }
+}

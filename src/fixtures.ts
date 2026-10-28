@@ -12,7 +12,7 @@ import {
 } from "./engine";
 export function fixture(name: string): Game {
   if (name === "r4-lobby") return newLobby();
-  let g = newGame();
+  let g = name === "showdown-check" ? newGame(undefined, 2, "r4") : newGame();
   if (name === "art-chess") return g;
   for (const m of ["f3", "e5", "g4", "Qh4#"]) g = applyMove(g, m);
   if (name === "selection") return g;
@@ -20,9 +20,23 @@ export function fixture(name: string): Game {
     g,
     survivors(chessOf(g), g.identities, "w").slice(0, 5),
     survivors(chessOf(g), g.identities, "b").slice(0, 5),
-    name === "staged-poker",
+    ["staged-poker", "showdown", "showdown-allin", "showdown-check"].includes(name),
   );
   if (name === "betting" || name === "staged-poker") return g;
+  if (name === "showdown-check") {
+    for (let street = 0; street < 2; street++) {
+      g = act(g, "b", { type: "check" });
+      g = act(g, "w", { type: "check" });
+    }
+    return act(g, "b", { type: "check" });
+  }
+  if (name === "showdown") {
+    for (let street = 0; street < 3; street++) {
+      g = act(g, "w", { type: "check" });
+      g = act(g, "b", { type: "check" });
+    }
+    return g;
+  }
   g = act(g, "w", { type: "allin" });
   g = act(g, "b", { type: name === "fold" ? "fold" : "call" });
   if (name.startsWith("campaign-")) {

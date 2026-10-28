@@ -36,6 +36,7 @@ import { restore } from "./persistence";
 import "./style.css";
 import { Checard, type ChessRole } from "./Checard";
 import { GoldProcession } from "./GoldProcession";
+import { showdownFrame } from "./showdown";
 const fixtureName = import.meta.env.DEV
   ? new URLSearchParams(location.search).get("fixture")
   : null;
@@ -81,6 +82,7 @@ function PlayingCard({
   role,
   side,
   revealed,
+  spotlight = false,
 }: {
   card?: Card;
   hidden?: boolean;
@@ -90,8 +92,9 @@ function PlayingCard({
   role?: ChessRole;
   side?: Side;
   revealed?: boolean;
+  spotlight?: boolean;
 }) {
-  const className = `playing-card ${revealed === undefined ? "" : revealed ? "card-revealed" : "card-unrevealed"} ${role ? "character-card" : ""} ${hidden ? "back" : ""} ${card?.suit === "D" || card?.suit === "H" ? "red" : ""} ${selected ? "picked" : ""} ${small ? "small" : ""}`;
+  const className = `playing-card ${spotlight ? "card-spotlight" : ""} ${revealed === undefined ? "" : revealed ? "card-revealed" : "card-unrevealed"} ${role ? "character-card" : ""} ${hidden ? "back" : ""} ${card?.suit === "D" || card?.suit === "H" ? "red" : ""} ${selected ? "picked" : ""} ${small ? "small" : ""}`;
   const content = role ? (
     <Checard role={role} card={hidden ? undefined : card} hidden={hidden} side={side} />
   ) : hidden ? (
@@ -196,6 +199,29 @@ function App() {
     [motion, setMotion] = useState(
       !matchMedia("(prefers-reduced-motion: reduce)").matches,
     );
+  const [showdown, setShowdown] = useState({ id: "", step: 0, details: false });
+  const [pageVisible, setPageVisible] = useState(!document.hidden);
+  const showdownStep = showdown.id === g.id ? showdown.step : 0;
+  const revealFrame = showdownFrame(g, showdownStep);
+  const settlementVisible = !revealFrame.active || (showdown.id === g.id && showdown.details);
+  const publicHand = (side: Side) => revealFrame.active
+    ? g.hands[side].slice(0, revealFrame.counts[side])
+    : exposedHand(g, side);
+  const showdownTable = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onVisibility = () => setPageVisible(!document.hidden);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+  useEffect(() => {
+    if (!revealFrame.active || revealFrame.complete || titleScreen || modal || !pageVisible) return;
+    const delay = !motion ? 180 : revealFrame.allShown ? 1200 : showdownStep === 0 ? 900 : 850;
+    const timer = setTimeout(() => setShowdown({ id: g.id, step: showdownStep + 1, details: false }), delay);
+    return () => clearTimeout(timer);
+  }, [g.id, revealFrame.active, revealFrame.complete, revealFrame.allShown, showdownStep, titleScreen, modal, pageVisible, motion]);
+  useEffect(() => {
+    if (revealFrame.active && !titleScreen) showdownTable.current?.scrollIntoView({ block: "start", behavior: "instant" });
+  }, [g.id, revealFrame.active, titleScreen]);
   const c = useMemo(() => chessOf(g), [g.moves]),
     own = useMemo(() => survivors(c, g.identities, "w"), [c, g.identities]),
     opponent = useMemo(
@@ -208,7 +234,9 @@ function App() {
       : [];
   const reviewingChess = g.phase === "selection" && !g.chessReviewed;
   const humanTurn = g.phase === "chess" && c.turn() === "w";
-  const status = reviewingChess
+  const status = revealFrame.active && !settlementVisible
+    ? revealFrame.complete ? "승부가 결정되었습니다. 계속을 눌러 정산을 확인하세요." : "마지막 카드를 공개합니다…"
+    : reviewingChess
     ? `체스 종료 · ${g.chessResult?.reason} · ${g.chessResult?.winner ? sideName(g.chessResult.winner) + " 승리" : "무승부"}`
     : g.phase === "chess"
       ? c.isCheck()
@@ -430,7 +458,7 @@ function App() {
     [selectedCards, g.identities],
   );
   const visibleOpponent =
-    g.phase === "result" && !g.betting?.folded && !g.abandoned;
+    g.phase === "result" && !g.betting?.folded && !g.abandoned && revealFrame.complete;
   const splitPots = !!g.economy;
   const fee = entryFee(g.economy),
     pool = chessPool(g.economy),
@@ -463,7 +491,7 @@ function App() {
   const total =
     g.committed.w + g.committed.b - (splitPots && !drawCarry ? pool : 0);
   const vault = (s: Side) =>
-    g.settlement ? g.settlement.final[s] : g.banks[s] - g.committed[s];
+    g.settlement && settlementVisible ? g.settlement.final[s] : g.banks[s] - g.committed[s];
   function next() {
     setG(nextRound(g));
     setSelectedCards([]);
@@ -707,10 +735,10 @@ function App() {
           ) : (
             <div className="game-layout">
               <section
-                className={`arena garden-arena ${g.phase === "chess" || reviewingChess ? "chess-scene" : "poker-scene"}`}
+                className={`arena garden-arena ${revealFrame.active && !settlementVisible ? "showdown-scene" : ""} ${g.phase === "chess" || reviewingChess ? "chess-scene" : "poker-scene"}`}
                 aria-label="게임 테이블"
               >
-                <GoldProcession game={g} paused={titleScreen || !motion} />
+                <GoldProcession game={g} paused={titleScreen || !motion || !settlementVisible} />
                 {g.phase === "chess" && g.moves.length === 0 && (
                   <div
                     className="entry-procession"
@@ -759,8 +787,8 @@ function App() {
                       : drawCarry
                         ? "체스 무승부 이월 · 포커"
                         : `체스 배당 ${pool} G · 포커`}{" "}
-                    {g.phase === "result" ? "정산 팟" : "현재 팟"}{" "}
-                    {g.settlement?.pot ?? total} G
+                    {g.phase === "result" && settlementVisible ? "정산 팟" : "현재 팟"}{" "}
+                    {settlementVisible ? g.settlement?.pot ?? total : total} G
                     <span>각자 {fee} G 납부 완료 · 추가 참가금 없음</span>
                   </div>
                 )}
@@ -780,7 +808,7 @@ function App() {
                   <div
                     className={
                       (g.phase === "selection" && !reviewingChess) ||
-                      g.phase === "betting"
+                      (g.phase === "betting" || (revealFrame.active && !settlementVisible))
                         ? "current"
                         : g.phase === "result"
                           ? "complete"
@@ -790,7 +818,7 @@ function App() {
                     <span>02</span> 포커
                   </div>
                   <i />
-                  <div className={g.phase === "result" ? "current" : ""}>
+                  <div className={g.phase === "result" && settlementVisible ? "current" : ""}>
                     <span>03</span> 정산
                   </div>
                 </div>
@@ -898,14 +926,14 @@ function App() {
                       </div>
                     </div>
                   ) : (
-                    <div className="poker-table">
+                    <div className="poker-table" ref={showdownTable}>
                       <span className="table-flourish">❧</span>
                       <div className="table-attendant" aria-hidden="true">
                         <i className="squire-head">♙</i>
                         <i className="squire-body">♣</i>
                         <span>{g.betting?.folded ? "⚐" : "⚑"}</span>
                       </div>
-                      {(g.betting?.log.length ?? 0) > 0 && (
+                      {settlementVisible && (g.betting?.log.length ?? 0) > 0 && (
                         <div
                           key={`${g.betting!.log.length}-${g.phase}`}
                           className={`gold-carriage ${g.phase === "result" ? "returning" : ""}`}
@@ -918,13 +946,15 @@ function App() {
                           <b>◉━━◉</b>
                         </div>
                       )}
-                      {g.betting?.street !== undefined && (
+                      {revealFrame.active ? (
                         <div className="reveal-stage" role="status">
-                          베팅 {g.betting.street + 1} / 3 · 양측{" "}
-                          {g.betting.street + 1}장 공개
-                          {g.phase === "result"
-                            ? " · 종료"
-                            : " · 라운드 종료 후 다음 공개"}
+                          {revealFrame.complete ? "쇼다운 · 모든 카드 공개" : revealFrame.allShown ? "두 패를 확인하세요…" :
+                            revealFrame.latest ? `${revealFrame.latest.side === "w" ? "내" : "상대"} ${revealFrame.latest.index + 1}번째 카드 공개` : "베팅 종료 · 마지막 카드 공개"}
+                        </div>
+                      ) : g.betting?.street !== undefined && (
+                        <div className="reveal-stage" role="status">
+                          베팅 {g.betting.street + 1} / 3 · 양측 {g.betting.street + 1}장 공개
+                          {g.phase === "result" ? " · 종료" : " · 라운드 종료 후 다음 공개"}
                         </div>
                       )}
                       <div className="opponent-hand">
@@ -932,10 +962,11 @@ function App() {
                           <PlayingCard
                             key={i}
                             side="b"
-                            revealed={Boolean(exposedHand(g, "b")[i])}
-                            hidden={!exposedHand(g, "b")[i]}
-                            card={exposedHand(g, "b")[i]}
-                            role={roleFor(exposedHand(g, "b")[i]) ?? "p"}
+                            spotlight={!revealFrame.complete && revealFrame.latest?.side === "b" && revealFrame.latest.index === i}
+                            revealed={Boolean(publicHand("b")[i])}
+                            hidden={!publicHand("b")[i]}
+                            card={publicHand("b")[i]}
+                            role={roleFor(publicHand("b")[i]) ?? "p"}
                           />
                         ))}
                       </div>
@@ -944,6 +975,20 @@ function App() {
                           {evaluate(g.hands.b).name}
                         </div>
                       )}
+                      {revealFrame.active && !settlementVisible ? (
+                        <div className={`showdown-prompt ${revealFrame.complete ? "verdict" : ""}`} role="status">
+                          {revealFrame.complete ? <>
+                            <span className="panel-eyebrow">SHOWDOWN</span>
+                            <h2>{g.result?.winner === "w" ? "승리" : g.result?.winner === "b" ? "패배" : "무승부"}</h2>
+                            <p>나 · {evaluate(g.hands.w).name}<br />상대 · {evaluate(g.hands.b).name}</p>
+                            <button className="primary full" onClick={() => setShowdown({ id: g.id, step: revealFrame.finalStep, details: true })}>계속 · 정산 보기</button>
+                          </> : <>
+                            <strong>{revealFrame.allShown ? "승부를 확인합니다…" : "마지막 한 장까지"}</strong>
+                            <p>팟 {total.toLocaleString()} G · 내 {revealFrame.counts.w}/5장 · 상대 {revealFrame.counts.b}/5장 공개</p>
+                            <button onClick={() => setShowdown({ id: g.id, step: revealFrame.finalStep, details: false })}>공개 건너뛰기</button>
+                          </>}
+                        </div>
+                      ) : (
                       <div className="central-pot" key={`${g.id}-${total}`}>
                         <span className="pot-label">
                           {g.phase === "result"
@@ -968,6 +1013,7 @@ function App() {
                               : "♜ 유효 판돈은 최종 정산에서 확정"}
                         </span>
                       </div>
+                      )}
                       {g.phase === "selection" ? (
                         <div className="selection-instruction">
                           <strong>당신의 마지막 다섯 장</strong>
@@ -979,16 +1025,17 @@ function App() {
                             g.phase !== "result" && (
                               <p className="reveal-stage">
                                 내 공개 카드:{" "}
-                                {exposedHand(g, "w").map(label).join(" · ")} ·
+                                {publicHand("w").map(label).join(" · ")} ·
                                 나머지는 상대에게 비공개
                               </p>
                             )}
                           <div className="own-hand">
-                            {g.hands.w.map((card) => (
+                            {g.hands.w.map((card, i) => (
                               <PlayingCard
                                 key={card.id}
                                 side="w"
-                                revealed={exposedHand(g, "w").some((shown) => shown.id === card.id)}
+                                spotlight={!revealFrame.complete && revealFrame.latest?.side === "w" && revealFrame.latest.index === i}
+                                revealed={publicHand("w").some((shown) => shown.id === card.id)}
                                 card={card}
                                 role={Object.entries(g.identities).reduce<
                                   ChessRole | undefined
@@ -1333,7 +1380,7 @@ function App() {
                     </div>
                   </section>
                 )}
-                {g.phase === "result" && g.settlement && (
+                {g.phase === "result" && g.settlement && settlementVisible && (
                   <ResultDialog title="최종 결과" active={!titleScreen && !storyVisible && !modal}>
                   <section className="panel result-panel">
                     <div className="result-icon">
