@@ -2607,17 +2607,47 @@ input[type="checkbox"] {
   }
 }
 
-/* Preserve character bodies; enlarge and tint only their chess hats. */
+/* Desktop keeps the complete sprite; mobile uses side-colored chess symbols. */
 .chess-scene .square .piece {
   position: absolute; inset: 0; width: 100%; height: 100%; padding: 0;
   display: flex; align-items: center; justify-content: center;
   filter: none; text-shadow: none;
 }
-.checard-board { height: 100%; aspect-ratio: 390 / 630; }
-.checard-side-w .checard-hat { filter: grayscale(1) brightness(1.8) drop-shadow(0 1px 1px #272c24); }
-.checard-side-b .checard-hat { filter: grayscale(1) brightness(.55) drop-shadow(0 1px 1px #fff1c9); }
-.checard-board .checard-value { top: 44%; left: 30%; width: 40%; height: 28%; }
-.checard-board.checard-hidden .checard-value { top: 43%; left: 29%; width: 42%; height: 30%; }
+.checard-board { height: 100%; aspect-ratio: 300 / 580; }
+.checard-side-w > svg { filter: grayscale(1) brightness(1.6) contrast(.65); }
+.checard-side-b > svg { filter: grayscale(1) brightness(.5); }
+.mobile-chess-piece { display: none; }
 @media (max-width: 700px) {
   .garden-arena.chess-scene .board-shell { transform: none; padding: 2%; }
+  .chess-scene .square { container-type: inline-size; }
+  .chess-scene .square .checard-board { display: none; }
+  .chess-scene .square .mobile-chess-piece {
+    display: block;
+    font-family: "DejaVu Sans", "Segoe UI Symbol", "Arial Unicode MS", serif;
+    font-variant-emoji: text;
+    font-size: clamp(28px, 8vw, 60px);
+    font-size: 78cqi;
+    line-height: 1;
+    padding-bottom: 20%;
+    pointer-events: none;
+  }
+  .chess-scene .ivory .mobile-chess-piece {
+    color: #fff8e7;
+    -webkit-text-stroke: 1px #383b30;
+    text-shadow: 0 2px 2px #18291b88;
+  }
+  .chess-scene .onyx .mobile-chess-piece {
+    color: #202522;
+    -webkit-text-stroke: 1px #eee1ba;
+    text-shadow: 0 2px 2px #18291b88;
+  }
+  .chess-scene .square .identity {
+    display: block; position: absolute; inset: auto 2px 1px auto;
+    z-index: 2; padding: 1px 3px; border-radius: 3px;
+    width: auto; height: auto; background: #fff4d9; color: #202522;
+    font-size: clamp(10px, 2.5vw, 16px); line-height: 1.1;
+    text-shadow: none; pointer-events: none;
+  }
+  .chess-scene .square .identity.red { color: #a02e28; }
+  .chess-scene .square .identity.concealed { background: #243c35; color: #efdfb3; }
 }

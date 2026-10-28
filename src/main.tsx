@@ -981,6 +981,9 @@ function App() {
                                     <span
                                       className={`piece ${piece.color === "w" ? "ivory" : "onyx"}`}
                                     >
+                                      <span className="mobile-chess-piece" aria-hidden="true">
+                                        {{ k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" }[piece.type]}{"\uFE0E"}
+                                      </span>
                                       <Checard role={piece.type} card={piece.color === "w" ? card : undefined} hidden={piece.color === "b"} side={piece.color} />
                                     </span>
                                     <span
