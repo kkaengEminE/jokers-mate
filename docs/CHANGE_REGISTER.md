@@ -1,9 +1,21 @@
-# 현재 설계 문서
+# 변경·검토 대장
 
-- [통합 게임 규칙](02_GAME_RULES.md)
-- [포커·단계 공개](05_POKER_SYSTEM.md)
-- [경제·정산](06_ECONOMY_SYSTEM.md)
-- [화면과 조작](09_UI_UX_SPEC.md)
-- [미술 방향](13_ART_DIRECTION.md)
-- [구현 현황](14_ROADMAP.md)
-- [미결 사항](OPEN_QUESTIONS.md)
+## 2026-10-31 문서 대조
+
+비교 기준: `50b95a7c73713ecda5da9388ed52f7c70a0e14cd`. 사용자 요청: 앞선 검토의 우선순위대로 문서 정리. 게임 코드·규칙 결정 추가 없음.
+
+| 순서 | 조치 | 결과·남은 항목 |
+|---|---|---|
+| 1 | 경제 버전과 승인 출처 복원 | DECISION_LOG에 초기20G/R3/R4 분리, 10월24일 승인 기록 링크. 06에서 현행 R4 연결 |
+| 2 | 무늬 기준 대조 | P09를 현행 본문 ♥>♦에 맞춤. 후속 승인 원문 미확인은 O16 유지 |
+| 3 | 중단 처리 구분 | 06·08의 자동 도주/재개 충돌 정리. 실제 재개 동작, 과거 도주 원장, 명시적 포기 미확인을 별도 기술. 최종 승인 근거는 O02 |
+| 4 | 단계 정의 | 14에서 Phase 1과 후속 v0.2 분리. Phase 2 이후 임의 정의 없음(O17) |
+| 5 | 현황 최신화 | 공개 저장소 관측, Pages 설정/배포 결과 구분, 테스트 수의 검증 시점 표기, 모바일·프롤로그·공개 연출과 미결 목록 대조 |
+
+문서 검증: 변경 전후의 금액·손익표, 무늬 본문/P09, 중단 표, 상대 링크를 대조한다. 테스트·빌드 재실행 및 실제 배포 검증은 이번 문서 작업의 결과가 아니다.
+
+## 과거 이력과 결정
+
+[통합 전 대장](https://github.com/kkaengEminE/jokers-mate/blob/05adb56221f63195ccb9017be730e9510481cd58/docs/CHANGE_REGISTER.md)과 [과거 결정 원문](https://github.com/kkaengEminE/jokers-mate/blob/05adb56221f63195ccb9017be730e9510481cd58/docs/DECISION_LOG.md)은 해당 버전으로 보존한다.
+
+현행 [결정 기록](DECISION_LOG.md) · [통합 규칙](02_GAME_RULES.md) · [경제](06_ECONOMY_SYSTEM.md) · [현황](14_ROADMAP.md) · [미결](OPEN_QUESTIONS.md).

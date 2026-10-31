@@ -8,7 +8,7 @@
 
 ## 설계 문서
 
-01~14 문서가 현행 설계다. 규칙과 구현 상태를 구분한다.
+01~14 문서가 현행 설계다. 규칙과 구현 상태를 구분한다. 루트 RULES.md 대신 아래 문서들을 검토하며, [결정 기록](docs/DECISION_LOG.md)의 승인·반영 상태와 [단계 현황](docs/14_ROADMAP.md)을 함께 확인한다.
 
 - [통합 규칙](docs/02_GAME_RULES.md) · [카드](docs/03_CARD_SYSTEM.md) · [체스](docs/04_CHESS_SYSTEM.md)
 - [포커](docs/05_POKER_SYSTEM.md) · [경제](docs/06_ECONOMY_SYSTEM.md) · [컴퓨터](docs/07_AI_DESIGN.md)
@@ -27,7 +27,7 @@ npm run play
 
 브라우저에서 [게임 열기](http://127.0.0.1:5173/)를 선택합니다. `play`는 터미널 작업과 분리된 로컬 서버를 시작합니다. 이미 실행 중이면 중복 실행하지 않습니다. 종료는 `npm run stop`입니다. 다른 프로그램이 5173을 사용하면 종료하거나 `JOKERS_PORT`로 별도 포트를 선택하세요. 포트가 달라지면 브라우저 저장 영역도 달라집니다.
 
-macOS에서는 [START_GAME.command](START_GAME.command)를 실행해 설치 확인·빌드·시작을 한 번에 할 수 있습니다. Node가 설치되어 있어야 하며 최초 의존성 설치에는 네트워크가 필요합니다. 로컬 서버는 127.0.0.1에만 열립니다. 인터넷 공개 배포는 하지 않았습니다.
+macOS에서는 [START_GAME.command](START_GAME.command)를 실행해 설치 확인·빌드·시작을 한 번에 할 수 있습니다. Node가 설치되어 있어야 하며 최초 의존성 설치에는 네트워크가 필요합니다. 로컬 서버는 127.0.0.1에만 열립니다. GitHub Pages 배포 설정은 추가되어 있습니다. 실제 배포 성공과 서비스 상태는 이번 문서 검토에서 확인하지 않았습니다.
 
 개발은 `npm run dev`, 검증은 `npm test`, 배포 파일 생성은 `npm run build`입니다. `dist/`와 `node_modules/`는 Git에 포함하지 않습니다.
 
@@ -37,7 +37,7 @@ macOS에서는 [START_GAME.command](START_GAME.command)를 실행해 설치 확�
 
 ## 검증과 제공 상태
 
-자동 테스트114개와 프로덕션 빌드가 통과했다. 소스 저장소는 [kkaengEminE/jokers-mate](https://github.com/kkaengEminE/jokers-mate)이며 비공개다. 외부 웹 공개·Steam·앱스토어 배포 및 도메인 구매는 완료되지 않았다.
+2026-10-27 문서에는 자동 테스트114개와 프로덕션 빌드 통과가 기록되어 있다. 이후 테스트 추가 커밋이 있으며, 2026-10-31 문서 검토에서 테스트·빌드를 재실행하지 않아 현재 통과 개수로 단정하지 않는다. 소스 저장소 [kkaengEminE/jokers-mate](https://github.com/kkaengEminE/jokers-mate)는 2026-10-31 GitHub 메타데이터 기준 공개(public)다. Pages 설정 추가와 실제 배포 완료는 구분한다. Steam·앱스토어 배포 및 도메인 구매 완료 근거는 이번 검토에서 확인하지 못했다.
 
 ## 아트 구현 범위
 
