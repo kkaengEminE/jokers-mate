@@ -35,7 +35,7 @@
 .play-view .captures summary { font-size: 12px; min-height: 32px; padding: 7px; border: 0; }
 .play-view .self-row .captures[open] > div { bottom: calc(100% + 4px); }
 .play-view .sidebar { display: block; min-height: 0; width: 100%; }
-.play-view .sidebar > * { margin: 0; }
+.play-view .sidebar > :not(dialog) { margin: 0; }
 .play-view .result-reopen { position: absolute; top: 32px; left: 50%; transform: translateX(-50%); z-index: 5; padding: 8px 16px; min-height: 44px; background: #14382ff5; }
 .play-view .sidebar .result-reopen { top: auto; bottom: 10px; }
 .play-view .error { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); width: min(94%, 600px); z-index: 80; background: #532c29; }
