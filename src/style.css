@@ -2699,6 +2699,15 @@ input[type="checkbox"] {
   .showdown-scene .showdown-prompt { padding: 10px 14px; }
 }
 .no-motion .card-spotlight .checard-value, .no-motion .showdown-prompt.verdict { animation: none; }
+.showdown-details { margin: 12px 0; text-align: left; font-size: 13px; line-height: 1.65; }
+.showdown-details summary { cursor: pointer; min-height: 44px; padding: 10px 8px; color: #f6d784; }
+.showdown-details[open] { border-block: 1px solid #c4ad6b66; padding-bottom: 10px; }
+.showdown-details .showdown-reason { font-weight: 700; color: #fff1c9; }
+.showdown-details dl { display: block; margin: 10px 0; }
+.showdown-details dl > div { display: block; padding: 8px 0; }
+.showdown-details dt { font-weight: 700; }
+.showdown-details dd { margin: 4px 0; overflow-wrap: anywhere; }
+.showdown-prompt .showdown-details[open] { max-height: 35dvh; overflow-y: auto; overscroll-behavior: contain; }
 @media (prefers-reduced-motion: reduce) {
   .poker-scene .card-spotlight .checard-value, .showdown-prompt.verdict { animation: none; }
 }

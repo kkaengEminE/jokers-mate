@@ -37,6 +37,7 @@ import { BettingControls } from "./BettingControls";
 import { Checard, type ChessRole } from "./Checard";
 import { GoldProcession } from "./GoldProcession";
 import { showdownFrame } from "./showdown";
+import { ShowdownDetails } from "./ShowdownDetails";
 const fixtureName = import.meta.env.DEV
   ? new URLSearchParams(location.search).get("fixture")
   : null;
@@ -872,6 +873,7 @@ function App() {
                             <span className="panel-eyebrow">SHOWDOWN</span>
                             <h2>{g.result?.winner === "w" ? "포커 승리" : "포커 패배"}</h2>
                             <p>나 {evaluate(g.hands.w).name} · 상대 {evaluate(g.hands.b).name}</p>
+                            <ShowdownDetails own={g.hands.w} opponent={g.hands.b} />
                             <button className="primary full" onClick={() => setShowdown({ id: g.id, step: revealFrame.finalStep, details: true })}>계속 · 정산 보기</button>
                           </> : <>
                             <strong>{revealFrame.allShown ? "승부를 확인합니다…" : "마지막 한 장까지"}</strong>
@@ -1087,6 +1089,9 @@ function App() {
                     <h2>이번 판 {g.settlement.final.w - g.banks.w >= 0 ? "+" : ""}{(g.settlement.final.w - g.banks.w).toLocaleString()}G</h2>
                     <p>내 금고 {g.banks.w.toLocaleString()} → {g.settlement.final.w.toLocaleString()}G</p>
                     <p>{g.abandoned ? "중단된 이전 대국" : `체스 ${g.chessResult?.winner === "w" ? "승리" : g.chessResult?.winner === "b" ? "패배" : "무승부"} · 포커 ${g.result?.winner === "w" ? "승리" : "패배"}`} · {g.result?.reason}</p>
+                    {!g.abandoned && !g.betting?.folded && g.hands.w.length === 5 && g.hands.b.length === 5 && (
+                      <ShowdownDetails own={g.hands.w} opponent={g.hands.b} />
+                    )}
                     <details><summary>정산 상세 보기</summary>
                     <table className="settlement-ledger">
                       <caption>한 번의 정산 · 양측 금액</caption>
