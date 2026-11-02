@@ -1,0 +1,246 @@
+/* Viewport layout: the controls reserve space below the garden, never cover it. */
+.app { min-width: 0; width: 100%; }
+.app [hidden] { display: none !important; }
+.masthead { height: 52px; padding: 0 max(12px, env(safe-area-inset-left)); }
+.masthead nav { gap: 4px; }
+.masthead nav .menu-button, .masthead nav .help-button { margin: 0; width: 44px; height: 44px; padding: 0; }
+.wordmark { font-size: 18px; letter-spacing: 1px; gap: 8px; }
+.brand-icon { font-size: 28px; }
+.wordmark small { display: none; }
+.home-view .wordmark { visibility: hidden; }
+.home-view main { padding: 0 12px 12px; }
+.home-view .title-screen { min-height: calc(100dvh - 64px); padding: 20px; }
+.home-view .title-screen h1 { font-size: clamp(48px, 8vw, 84px); }
+.home-view .title-tagline { font-size: 15px; }
+.home-view .title-save-note { font-size: 12px; }
+.lobby.panel { max-width: 480px; margin: 12px auto; padding: 24px; }
+.app:not(.play-view) main { max-width: 1100px; margin: auto; padding-top: 0; }
+.play-view { height: 100dvh; min-height: 0; display: flex; flex-direction: column; }
+.play-view main { flex: 1; min-height: 0; width: 100%; max-width: 1200px; margin: 0 auto; padding: 6px 12px max(8px, env(safe-area-inset-bottom)); }
+.play-content { height: 100%; }
+.play-view .game-layout { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: 0; align-items: stretch; }
+.play-view .arena { display: grid; grid-template-rows: 28px minmax(0, 1fr); min-height: 0; height: 100%; width: 100%; max-width: none; border-radius: 14px 14px 0 0; }
+.play-view .phase-bar { height: 28px; gap: 12px; padding: 0; }
+.play-view .phase-bar > div { font-size: 12px; }
+.play-view .phase-bar span { width: 18px; height: 18px; font-size: 10px; }
+.play-view .phase-bar i { width: 24px; }
+.play-view .table-area { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 34px minmax(0, 1fr) 34px; min-height: 0; padding: 4px 12px; gap: 2px; container-type: size; align-items: stretch; }
+.play-view .garden-arena .player-row { grid-column: 1; grid-row: auto; flex-direction: row; align-items: center; align-self: stretch; min-height: 0; padding: 0 10px; margin: 0; gap: 8px; border-radius: 6px; background: #13372eef; }
+.play-view .vault, .play-view .chess-scene .vault { flex-direction: row; gap: 6px; text-align: left; }
+.play-view .vault > div { display: flex; align-items: baseline; gap: 10px; }
+.play-view .vault strong { font: 600 17px Georgia, serif; letter-spacing: 0; }
+.play-view .player-name { font-size: 13px; white-space: nowrap; }
+.play-view .avatar { width: 24px; height: 24px; font-size: 20px; box-shadow: none; border: 0; background: transparent; }
+.play-view .captures { max-width: 48%; text-align: right; }
+.play-view .captures summary { font-size: 12px; min-height: 32px; padding: 7px; border: 0; }
+.play-view .self-row .captures[open] > div { bottom: calc(100% + 4px); }
+.play-view .sidebar { display: block; min-height: 0; width: 100%; }
+.play-view .sidebar > * { margin: 0; }
+.play-view .result-reopen { position: absolute; top: 32px; left: 50%; transform: translateX(-50%); z-index: 5; padding: 8px 16px; min-height: 44px; background: #14382ff5; }
+.play-view .sidebar .result-reopen { top: auto; bottom: 10px; }
+.play-view .error { position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); width: min(94%, 600px); z-index: 80; background: #532c29; }
+.play-view .gold-route { z-index: 4; }
+
+/* Chess uses the available space as a square. Mobile keeps the large symbols. */
+.chess-view .game-layout { grid-template-rows: minmax(0, 1fr); }
+.chess-view .sidebar { display: none; }
+.play-view .chess-scene { grid-template-rows: 28px minmax(0, 1fr) auto; border-radius: 14px; }
+.play-view .chess-scene .table-area { padding: 4px 8px; }
+.play-view .garden-arena.chess-scene .board-shell {
+  grid-column: 1; grid-row: 2; place-self: center; padding: 2%; margin: 0;
+  width: min(100cqw, calc(100cqh - 76px)); max-width: 700px; aspect-ratio: 1;
+  transform: none; border: 0; box-sizing: border-box;
+}
+.play-view .board { width: 100%; height: 100%; aspect-ratio: 1; }
+.play-view .square { min-width: 0; min-height: 0; }
+.chess-command { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; background: #12352dec; }
+.chess-command > div { min-width: 0; display: grid; gap: 3px; }
+.chess-command strong { color: #edd18d; font-size: 14px; }
+.chess-command span { font-size: 12px; color: #e2dfcc; }
+.chess-command button { flex-shrink: 0; min-height: 44px; padding: 8px 12px; font-size: 12px; }
+
+/* Five complete characters fit each row; the artwork and paper have separate tint. */
+.play-view .poker-table { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "stage" "opponent" "opponent-name" "pot" "self" "self-name"; grid-template-rows: 20px minmax(0, 1fr) auto auto minmax(0, 1fr) 22px; width: 100%; min-height: 0; min-width: 0; padding: 0; gap: 2px; border: 0; box-shadow: none; background: transparent; border-radius: 0; align-items: stretch; justify-content: stretch; }
+.play-view .reveal-stage { grid-area: stage; align-self: center; justify-self: center; margin: 0; padding: 1px 10px; font-size: 12px; line-height: 18px; border: 0; box-shadow: none; border-radius: 4px; background: #f3e5bde8; color: #343f2e; }
+.play-view .poker-scene .opponent-hand, .play-view .poker-scene .own-hand {
+  justify-self: center; align-self: stretch; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+  width: 100%; max-width: 640px; height: 100%; min-height: 0;
+  padding: 4px 2px 18px; gap: clamp(4px, 1vw, 16px); align-items: center; justify-items: center;
+  container-type: size;
+}
+.play-view .opponent-hand { grid-area: opponent; }
+.play-view .own-hand { grid-area: self; }
+.play-view .poker-scene .character-card {
+  width: min(calc((100cqw - 24px) / 5), calc(100cqh * 300 / 580)); height: auto;
+  max-height: 100%; min-height: 0; aspect-ratio: 300 / 580; margin: 0; padding: 0;
+  background: transparent; border: 0; box-shadow: none;
+}
+.play-view .poker-scene .character-card > .checard { display: block; width: 100%; height: 100%; }
+.play-view .poker-scene .character-card .checard-value { font-size: clamp(14px, 1.1vw, 20px); white-space: nowrap; }
+.play-view .poker-scene .character-card.card-revealed { transform: translateY(4px); }
+.play-view .poker-scene .character-card.card-unrevealed { transform: translateY(-3px); }
+.play-view .poker-scene .character-card.card-revealed::after { bottom: -15px; font-size: 10px; line-height: 14px; }
+.play-view .central-pot { grid-area: pot; align-self: center; justify-self: center; display: flex; flex-direction: row; align-items: center; justify-content: center; flex-wrap: wrap; gap: 2px 8px; width: min(270px, 86%); min-height: 52px; height: auto; padding: 5px 12px; margin: 0; border: 1px solid #a78d58; border-radius: 8px; box-shadow: 0 3px 0 #5d4d36aa; background: #f2e5bdeF; }
+.play-view .central-pot .pot-label { font-size: 12px; letter-spacing: 1px; }
+.play-view .central-pot strong { font: 600 26px Georgia, serif; }
+.play-view .central-pot > span:last-child { flex-basis: 100%; max-width: none; font-size: 11px; line-height: 14px; text-align: center; }
+.play-view .hand-name { justify-self: center; display: block; width: max-content; max-width: 100%; margin: 0; padding: 1px 10px; border-radius: 4px; line-height: 20px; font-size: 13px; background: #f2e5bde8; color: #293b2e; }
+.play-view .self-hand-name { grid-area: self-name; }
+.play-view .opponent-hand-name { grid-area: opponent-name; }
+.play-view .hand-name .joker-resolution { display: none; }
+.play-view .showdown-prompt { grid-area: pot; justify-self: center; width: min(360px, 95%); min-height: 0; padding: 8px 12px; margin: 0; }
+.play-view .showdown-prompt h2 { font-size: 26px; margin: 2px 0; }
+.play-view .showdown-prompt p { margin: 4px 0 6px; font-size: 12px; }
+.play-view .showdown-prompt .panel-eyebrow { display: none; }
+.play-view .showdown-prompt button { min-height: 44px; padding: 8px; }
+.play-view .fold-banner { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); white-space: nowrap; }
+.compact-card-face { display: none; }
+
+/* The coin tray is never committed by a denomination click. */
+.coin-dock { position: relative; padding: 6px 16px 10px; border: 1px solid #ad94595e; border-top: 2px solid #b79955; border-radius: 0 0 14px 14px; background: linear-gradient(#193c32, #102b25); box-shadow: 0 5px 20px #0003; }
+.coin-dock-heading { display: flex; align-items: center; justify-content: space-between; max-width: 780px; margin: auto; height: 24px; }
+.coin-dock-heading > strong { font-size: 13px; color: #e7cf8a; }
+.coin-dock-heading > button { font-size: 12px; min-width: 44px; min-height: 32px; padding: 4px 8px; border: 0; }
+.coin-tray { position: relative; min-height: 48px; max-width: 780px; margin: auto; display: grid; grid-template-columns: 1fr auto; align-content: center; gap: 2px 12px; padding: 3px 8px; border-bottom: 1px solid #b6995c30; }
+.coin-tray > div { display: flex; align-items: baseline; gap: 7px; font-size: 13px; }
+.coin-tray strong { font-size: 22px; color: #f4d784; }
+.coin-tray strong small { font-size: 12px; }
+.tray-coins { color: #c9a85b; font-size: 13px; }
+.tray-note { grid-row: 2; font-size: 12px; color: #d3d7c6; }
+.tray-note.needs-coins { color: #f3cd7e; }
+.tray-balance { align-self: center; grid-column: 2; grid-row: 1 / 3; font-size: 12px; color: #c9d4be; }
+.gold-denominations { display: flex; justify-content: center; gap: clamp(12px, 4vw, 36px); padding: 7px 0 3px; }
+.gold-coin { width: 56px; height: 56px; padding: 0; border-radius: 50%; border: 3px double #e8c776; background: radial-gradient(circle at 32% 22%, #e7cb86, #b99851 70%, #8b6d32); color: #3b321e; box-shadow: inset 0 0 0 3px #9e7c3840, 0 3px 0 #71572c, 0 4px 7px #0004; display: flex; align-items: center; justify-content: center; flex-direction: column; touch-action: manipulation; transition: transform 100ms, box-shadow 100ms; }
+.gold-coin span { font: 700 20px Georgia, serif; }
+.gold-coin small { font-size: 10px; }
+.gold-coin:hover:not(:disabled) { background: radial-gradient(circle at 32% 22%, #f5dfa9, #cfaf62); }
+.gold-coin:active:not(:disabled) { transform: translateY(3px); box-shadow: inset 0 0 0 3px #9e7c3840; }
+.gold-coin:disabled { opacity: .45; }
+.tray-tools { display: flex; justify-content: center; gap: 5px; max-width: 560px; margin: auto; }
+.tray-tools button { flex: 1; min-width: 0; min-height: 44px; max-width: 90px; font-size: 12px; padding: 4px; border: 0; color: #ddcfaa; }
+.bet-actions { display: grid; grid-template-columns: .8fr 1fr 1.3fr; gap: 8px; width: 100%; max-width: 780px; margin: auto; }
+.bet-actions button { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 50px; padding: 6px; font-size: 16px; border-radius: 8px; background: #24453a; }
+.bet-actions button strong { font-size: 16px; }
+.bet-actions button span { font-size: 12px; line-height: 17px; }
+.bet-actions .primary { background: #d5b874; color: #20372a; border-color: #e4ce94; box-shadow: 0 2px 0 #756139; }
+.bet-actions .fold-action { background: transparent; color: #c9cbb8; }
+.fine-coins { display: flex; justify-content: center; gap: 8px; margin: 12px 0; }
+.fine-coins button { flex: 1; min-height: 44px; padding: 8px; }
+.coin-adjustment p { margin: 14px 0; font-size: 14px; }
+
+/* Card selection: slots and confirmation remain outside the scrolling inventory. */
+.picking-view .game-layout { grid-template-rows: minmax(0, 1fr); }
+.picking-view .arena { display: none; }
+.picking-view .sidebar { height: 100%; }
+.picking-view .selection-panel { display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto; height: 100%; max-width: 800px; margin: auto; padding: 16px; gap: 8px; background: linear-gradient(#12372deB, #12372df5), url('/art/royal-garden-v1.png') center / cover; }
+.selection-panel .panel-title { margin: 0; }
+.selection-panel .panel-title h3 { font-size: 16px; }
+.reveal-slots { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.reveal-slots button { padding: 10px 2px; display: grid; gap: 8px; min-height: 78px; background: #f2e5c5; color: #243c2d; border: 2px solid #c6a967; }
+.reveal-slots button > span { font: 700 23px Georgia, serif; }
+.reveal-slots .slot-active { outline: 3px solid #edd17e; transform: translateY(-3px); }
+.slot-instruction { font-size: 12px; min-height: 20px; color: #ded5b9; text-align: center; }
+.selection-panel .card-picker { min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; grid-template-columns: repeat(auto-fit, minmax(56px, 1fr)); align-content: start; justify-items: center; gap: 12px 8px; padding: 10px 4px; margin: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.selection-panel .playing-card.small { width: 54px; height: 78px; }
+.selection-panel .playing-card.small .card-corner { font-size: 14px; }
+.selection-panel .playing-card.small .card-symbol { font-size: 24px; }
+.selection-panel .playing-card.small.picked { transform: none; border: 3px solid #deb75e; box-shadow: 0 0 0 2px #e4c87977; }
+.selection-panel .selection-name { margin: 0; min-height: 22px; font-size: 14px; text-align: center; color: #e9d292; }
+.selection-tools { display: flex; justify-content: center; gap: 12px; }
+.selection-tools button { min-height: 44px; font-size: 13px; padding: 6px 16px; }
+.selection-panel > .primary { min-height: 50px; font-size: 17px; }
+.help-topics { display: grid; gap: 8px; margin-top: 20px; }
+.help-topics details { border: 1px solid var(--line); border-radius: 8px; padding: 0 12px; }
+.help-topics summary, .modal details > summary { cursor: pointer; padding: 14px 0; font-size: 15px; }
+.help-topics p { font-size: 14px; padding-bottom: 12px; }
+.modal .move-table, .modal .bet-log { max-height: 40dvh; overflow-y: auto; }
+
+@media (min-width: 1000px) and (min-height: 541px) {
+  .coin-dock { display: grid; grid-template-columns: 1fr 300px 1fr; grid-template-rows: 24px 54px 50px; gap: 0 16px; padding: 6px 24px 10px; }
+  .coin-dock-heading { grid-column: 1; grid-row: 1; width: 100%; }
+  .coin-tray { grid-column: 1; grid-row: 2; display: flex; flex-direction: column; align-items: start; width: 100%; margin: 0; padding: 0; border: 0; }
+  .coin-tray .tray-balance { position: absolute; bottom: -25px; left: 0; }
+  .gold-denominations { grid-column: 2; grid-row: 1 / 3; align-self: center; gap: 16px; }
+  .tray-tools { grid-column: 3; grid-row: 1 / 3; flex-wrap: wrap; align-self: center; gap: 0; }
+  .tray-tools button { flex: 1 1 30%; min-width: 54px; }
+  .bet-actions { grid-column: 2 / 4; grid-row: 3; }
+}
+
+@media (max-width: 700px) {
+  .masthead { height: 48px; flex-shrink: 0; }
+  .play-view main { padding: 2px 6px max(4px, env(safe-area-inset-bottom)); }
+  .play-view .table-area { padding: 2px 5px; grid-template-rows: 30px minmax(0, 1fr) 30px; }
+  .play-view .garden-arena .player-row { padding: 0 6px; }
+  .play-view .vault > div { gap: 6px; }
+  .play-view .vault strong { font-size: 16px; }
+  .play-view .avatar { display: none; }
+  .play-view .captures summary { font-size: 11px; }
+  .play-view .poker-scene .character-card .checard-value { font-size: 14px; }
+  .coin-dock { padding: 4px 10px 6px; }
+  .coin-dock-heading { height: 22px; }
+  .coin-tray { padding: 2px 0; gap: 2px 4px; }
+  .gold-denominations { gap: 22px; padding: 5px 0 2px; }
+  .gold-coin { width: 50px; height: 50px; }
+  .gold-coin span { font-size: 19px; }
+  .tray-coins { display: none; }
+  .tray-balance, .tray-note { font-size: 11px; }
+  .bet-actions { gap: 6px; }
+  .bet-actions button { min-height: 48px; }
+  .play-view .chess-scene .board-shell { width: min(100cqw, calc(100cqh - 68px)); }
+  .play-view .poker-table { grid-template-rows: 18px minmax(0, 1fr) auto auto minmax(0, 1fr) 20px; }
+}
+
+/* Short phones use legible card faces; full characters stay proportional on roomier screens. */
+@media (max-width: 700px) and (max-height: 780px), (max-width: 350px) {
+  .play-view .poker-scene .character-card { aspect-ratio: auto; width: min(100%, 64px); height: min(100cqh, 74px); }
+  .play-view .poker-scene .character-card > .checard { display: none; }
+  .compact-card-face { display: flex; width: 100%; height: 100%; flex-direction: column; justify-content: center; align-items: center; gap: 0; }
+  .compact-card-face strong { display: flex; justify-content: center; align-items: center; width: 100%; flex: 1; min-height: 26px; border: 1px solid #9e8953; border-radius: 4px; background: #fff4d9; font: 700 16px Georgia, serif; white-space: nowrap; }
+  .compact-card-face .card-role { font: 18px / 1 "DejaVu Sans", "Segoe UI Symbol", serif; font-variant-emoji: text; }
+  .compact-card-face .side-w { color: #fff4d9; -webkit-text-stroke: 1px #3b402c; }
+  .compact-card-face .side-b { color: #232c25; -webkit-text-stroke: 1px #eee2bb; }
+  .card-unrevealed .compact-card-face strong { filter: brightness(.78); }
+  .concealed-face strong { background: repeating-linear-gradient(45deg, #203e40, #203e40 4px, #2c4b4d 4px, #2c4b4d 5px); color: #d7c58e; }
+  .card-spotlight .compact-card-face strong { animation: showdown-turn .55s ease-out both; box-shadow: 0 0 0 2px #f4d576; }
+}
+
+@media (orientation: landscape) and (max-height: 540px) and (min-width: 600px) {
+  .play-view .masthead { height: 44px; flex-shrink: 0; }
+  .betting-view .game-layout { grid-template-columns: minmax(0, 1fr) minmax(270px, 34%); grid-template-rows: minmax(0, 1fr); }
+  .betting-view .arena { border-radius: 12px 0 0 12px; }
+  .betting-view .sidebar { display: flex; }
+  .coin-dock { border-radius: 0 12px 12px 0; padding: 6px 10px; width: 100%; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+  .coin-dock-heading, .coin-tray { width: 100%; margin: 0; }
+  .gold-denominations { gap: 12px; padding: 8px 0; }
+  .gold-coin { width: 46px; height: 46px; }
+  .coin-tray { display: flex; flex-direction: column; min-height: 60px; }
+  .tray-balance { align-self: start; }
+  .tray-tools { width: 100%; margin: 0; }
+  .bet-actions { gap: 4px; }
+  .play-view .table-area { grid-template-rows: 26px minmax(0, 1fr) 26px; padding: 0 6px; }
+  .play-view .poker-scene .character-card { aspect-ratio: auto; width: min(100%, 64px); height: min(100cqh, 56px); }
+  .play-view .poker-scene .character-card > .checard { display: none; }
+  .compact-card-face { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; background: #fff4d9; border: 1px solid #9c8856; border-radius: 4px; font: 700 17px Georgia, serif; white-space: nowrap; }
+  .compact-card-face .card-role { display: none; }
+  .concealed-face { background: #274744; color: #d9c993; }
+  .card-unrevealed .compact-card-face strong { filter: brightness(.78); }
+  .picking-view .selection-panel { grid-template-columns: minmax(0, 1fr) 250px; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 6px 12px; }
+  .selection-panel .panel-title { grid-column: 1 / 3; }
+  .selection-panel .reveal-slots { grid-column: 1; grid-row: 2; }
+  .selection-panel .slot-instruction { grid-column: 1; grid-row: 4; }
+  .selection-panel .card-picker { grid-column: 1; grid-row: 3; }
+  .selection-panel .selection-name { grid-column: 2; grid-row: 2; align-self: center; }
+  .selection-panel .selection-tools { grid-column: 2; grid-row: 3; align-self: end; }
+  .selection-panel > .primary { grid-column: 2; grid-row: 4; }
+}
+
+/* Enlarged text may scroll the page, instead of clipping controls. */
+@media (max-height: 480px) and (max-width: 599px) {
+  .play-view { height: auto; min-height: 100dvh; }
+  .play-view .game-layout { min-height: 660px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gold-coin, .character-card { transition: none; }
+  .card-spotlight .compact-card-face strong { animation: none; }
+}
+.no-motion .card-spotlight .compact-card-face strong { animation: none; }
