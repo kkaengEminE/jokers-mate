@@ -38,6 +38,7 @@ import { Checard, type ChessRole } from "./Checard";
 import { GoldProcession } from "./GoldProcession";
 import { showdownFrame } from "./showdown";
 import { ShowdownDetails } from "./ShowdownDetails";
+import { DuelLab } from "./duel/DuelLab";
 const fixtureName = import.meta.env.DEV
   ? new URLSearchParams(location.search).get("fixture")
   : null;
@@ -173,7 +174,7 @@ function App() {
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null),
     [selectedCards, setSelectedCards] = useState<string[]>([]);
   const [modal, setModal] = useState<
-      "help" | "settings" | "records" | "menu" | "match" | null
+      "help" | "settings" | "records" | "menu" | "match" | "duel" | null
     >(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
@@ -350,7 +351,7 @@ function App() {
     return () => clearTimeout(timer);
   }, [g, modal, retry, titleScreen]);
   useEffect(() => {
-    if (!modal && !promotion) return;
+    if (modal === "duel" || (!modal && !promotion)) return;
     const previous = document.activeElement as HTMLElement | null;
     const dialog = document.querySelector<HTMLElement>("[role=dialog]");
     const focusable = () =>
@@ -1248,7 +1249,8 @@ function App() {
           </section>
         </div>
       )}
-      {modal && (
+      {modal === "duel" && <DuelLab motion={motion} onClose={() => setModal("settings")} />}
+      {modal && modal !== "duel" && (
         <div className="modal-backdrop" onClick={() => setModal(null)}>
           <section
             className={`modal ${modal === "records" ? "wide" : ""}`}
@@ -1326,6 +1328,11 @@ function App() {
                     onChange={(e) => setMotion(e.target.checked)}
                   />
                 </label>
+                <section className="duel-settings-entry" aria-label="대결 모드 테스트">
+                  <h3>카드 일기토</h3>
+                  <p>양쪽 기물·문양·숫자를 골라 60초 대결을 해보세요.</p>
+                  <button className="primary full" onClick={() => setModal("duel")}>대결 모드 테스트 →</button>
+                </section>
                 <p>내장 컴퓨터 · 난도 3/10 · 기초 전술을 아는 초보 기사</p>
                 <p className="fine-print">
                   가상 골드만 사용합니다. 설정은 현재 화면에 적용되며 게임
