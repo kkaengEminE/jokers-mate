@@ -1,0 +1,88 @@
+/* Keep the arena visible for the full finish sequence before the result dialog. */
+.duel-arena.ended .duel-stage-label {
+  visibility: hidden;
+}
+.duel-finish-caption {
+  position: absolute;
+  z-index: 7;
+  top: 11%;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  max-width: 96%;
+  border: 1px solid #d6bc7c;
+  border-radius: 8px;
+  background: #102c23ed;
+  color: #f9dfa0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.duel-finish-caption strong {
+  font:
+    italic bold clamp(22px, 4vw, 40px) Georgia,
+    serif;
+}
+.duel-finish-caption span {
+  font-size: 16px;
+}
+.finishing-loss {
+  --duel-recoil: -16px;
+}
+.finishing-loss.enemy {
+  --duel-recoil: 16px;
+}
+.duel-fighter.finishing-loss .duel-figure {
+  /* Sample the animation from the presentation clock, including after tab resume. */
+  animation: duel-defeat 3000ms linear both;
+  animation-delay: var(--duel-finish-delay);
+  animation-play-state: paused;
+}
+@keyframes duel-defeat {
+  0%,
+  6% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(var(--duel-recoil), -6px) rotate(-5deg);
+  }
+  31% {
+    transform: translate(var(--duel-recoil), 0) rotate(-7deg);
+  }
+  32% {
+    transform: translate(var(--duel-recoil), -5px) rotate(0);
+  }
+  48%,
+  100% {
+    transform: translate(var(--duel-recoil), 0) rotate(0);
+  }
+}
+.duel-reduced .duel-fighter.finishing-loss .duel-figure {
+  animation: none;
+}
+@media (max-width: 560px) {
+  .duel-finish-caption {
+    top: 13%;
+    gap: 8px;
+    padding: 6px 10px;
+  }
+  .duel-finish-caption span {
+    font-size: 14px;
+  }
+}
+@media (max-height: 540px) and (min-width: 561px) {
+  .duel-finish-caption {
+    top: 2px;
+    padding: 4px 12px;
+  }
+  .duel-finish-caption strong {
+    font-size: 22px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .duel-fighter.finishing-loss .duel-figure {
+    animation: none;
+  }
+}

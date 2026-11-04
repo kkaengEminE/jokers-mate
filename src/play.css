@@ -244,3 +244,18 @@
   .card-spotlight .compact-card-face strong { animation: none; }
 }
 .no-motion .card-spotlight .compact-card-face strong { animation: none; }
+
+/* Comfortable touch targets and legible guidance on phones. */
+@media (any-pointer: coarse), (max-width: 700px) {
+  .modal .close { min-width: 44px; min-height: 44px; padding: 8px; }
+  .coin-dock-heading { height: 44px; }
+  .coin-dock-heading > button { min-height: 44px; }
+  .play-view .table-area { grid-template-rows: 44px minmax(0, 1fr) 44px; }
+  .play-view .captures summary { min-height: 44px; padding: 12px 6px; font-size: 12px; }
+  .chess-command span { font-size: 14px; }
+  .tray-balance, .tray-note { font-size: 12px; }
+  .title-links button { font-size: 14px; }
+  .result-dialog button, .result-dialog summary { min-height: 44px; }
+  .play-view .poker-scene .character-card.card-revealed::after { font-size: 12px; }
+  .chess-scene .square .identity { font-size: clamp(11px, 2.8vw, 16px); }
+}

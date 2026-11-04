@@ -18,10 +18,14 @@ export interface Technique {
   interval: number;
   recovery: number;
   animation: "punch" | "kick" | "sweep";
+  finisherAnimation?: "punch" | "kick" | "sweep";
 }
 export interface FighterKit {
+  formulaVersion: 2;
   card: FighterCard;
   name: string;
+  roleName: string;
+  roleTrait: string;
   prefix: string;
   color: string;
   speed: number;
@@ -114,6 +118,107 @@ const basics: Record<string, Basic> = {
   L: ["하단 차기", "low", 5, 1.1, 200, 300],
   E: ["팔꿈치", "mid", 8, 0.75, 180, 320],
   T: ["긴 찌르기", "mid", 5, 1.25, 220, 320],
+};
+interface RoleStyle {
+  name: string;
+  trait: string;
+  basic: Basic | null;
+  animation: Technique["animation"] | null;
+  finisher: Level | null;
+  damage: number;
+  range: number;
+  startup: number;
+  recovery: number;
+  comboInterval: number;
+  specialInterval: number;
+  speed: number;
+}
+// Percentages use integer arithmetic, then round only the final combined value.
+const roleStyles: Record<ChessRole, RoleStyle> = {
+  p: {
+    name: "폰",
+    trait: "속공 · 짧은 사거리, 빠른 중단 마무리",
+    basic: ["보병 잽", "high", 4, 0.9, 90, 180],
+    animation: "punch",
+    finisher: "mid",
+    damage: 90,
+    range: 90,
+    startup: 80,
+    recovery: 85,
+    comboInterval: 200,
+    specialInterval: 260,
+    speed: 105,
+  },
+  n: {
+    name: "나이트",
+    trait: "기동 · 하단 차기와 낮은 마무리",
+    basic: ["측면 차기", "low", 5.5, 1.15, 170, 280],
+    animation: "kick",
+    finisher: "low",
+    damage: 100,
+    range: 105,
+    startup: 105,
+    recovery: 110,
+    comboInterval: 260,
+    specialInterval: 320,
+    speed: 110,
+  },
+  b: {
+    name: "비숍",
+    trait: "견제 · 긴 찌르기, 상단 마무리",
+    basic: ["사선 찌르기", "mid", 5, 1.4, 220, 330],
+    animation: "punch",
+    finisher: "high",
+    damage: 90,
+    range: 115,
+    startup: 110,
+    recovery: 105,
+    comboInterval: 260,
+    specialInterval: 330,
+    speed: 100,
+  },
+  r: {
+    name: "룩",
+    trait: "강타 · 짧고 강한 공격, 긴 회복",
+    basic: ["성벽 팔꿈치", "mid", 8, 0.75, 200, 340],
+    animation: "punch",
+    finisher: "mid",
+    damage: 110,
+    range: 85,
+    startup: 120,
+    recovery: 120,
+    comboInterval: 280,
+    specialInterval: 350,
+    speed: 90,
+  },
+  q: {
+    name: "퀸",
+    trait: "변화 · 숫자 고유 기술과 높이 유지",
+    basic: null,
+    animation: null,
+    finisher: null,
+    damage: 100,
+    range: 100,
+    startup: 100,
+    recovery: 100,
+    comboInterval: 240,
+    specialInterval: 300,
+    speed: 100,
+  },
+  k: {
+    name: "킹",
+    trait: "압박 · 장타와 묵직한 중단 마무리",
+    basic: ["왕관 장타", "mid", 7, 0.9, 180, 300],
+    animation: "punch",
+    finisher: "mid",
+    damage: 105,
+    range: 95,
+    startup: 115,
+    recovery: 110,
+    comboInterval: 260,
+    specialInterval: 330,
+    speed: 95,
+  },
 };
 type Row = [
   string,
@@ -287,7 +392,8 @@ export function fighterKit(card: FighterCard): FighterKit {
   const rank = card.suit === "J" ? (card.rank === 1 ? 5 : 7) : card.rank;
   const mod = suits[suit],
     row = rows[rank],
-    basic = basics[row[0]];
+    role = roleStyles[card.role],
+    basic = role.basic ?? basics[row[0]];
   const move = (
     id: ActionKind,
     name: string,
@@ -298,26 +404,50 @@ export function fighterKit(card: FighterCard): FighterKit {
     interval: number,
     recovery: number,
     animation: Technique["animation"],
-  ): Technique => ({
-    id,
-    name,
-    levels: lv,
-    damage: damage.map((n) => Math.round(n * mod.damage * 100)),
-    range: Math.round(range * mod.range * 1000) / 1000,
-    startup: Math.round((startup * Math.round(mod.startup * 100)) / 100),
-    interval,
-    recovery: Math.round((recovery * Math.round(mod.recovery * 100)) / 100),
-    animation,
-  });
+  ): Technique => {
+    const linked = id === "combo" || id === "special";
+    const rolePercent = (key: "damage" | "range" | "startup" | "recovery") =>
+      linked ? role[key] : 100;
+    return {
+      id,
+      name: linked && card.role !== "q" ? `${role.name} · ${name}` : name,
+      levels: lv.map((level, i) =>
+        linked && i === lv.length - 1 && role.finisher ? role.finisher : level,
+      ),
+      damage: damage.map((n) =>
+        Math.round(
+          (n * rolePercent("damage") * Math.round(mod.damage * 100)) / 100,
+        ),
+      ),
+      range:
+        Math.round(
+          (range * rolePercent("range") * Math.round(mod.range * 100)) / 10,
+        ) / 1000,
+      startup: Math.round(
+        (startup * rolePercent("startup") * Math.round(mod.startup * 100)) /
+          10000,
+      ),
+      interval,
+      recovery: Math.round(
+        (recovery * rolePercent("recovery") * Math.round(mod.recovery * 100)) /
+          10000,
+      ),
+      animation,
+      finisherAnimation: linked ? (role.animation ?? undefined) : undefined,
+    };
+  };
   const kick = [3, 8, 9, 10, 12].includes(rank);
   const specialLevels =
     rank === 9 ? "HML" : rank === 11 ? "HHMH" : rank === 12 ? "LHM" : row[2];
   return {
+    formulaVersion: 2,
     card: { ...card },
     name: cardLabel(card),
+    roleName: role.name,
+    roleTrait: role.trait,
     prefix: mod.prefix,
     color: mod.color,
-    speed: 1.8 * mod.speed,
+    speed: (1.8 * mod.speed * role.speed) / 100,
     guardName: mod.guardName,
     guardLevel: mod.guard,
     guardScale: mod.guardScale,
@@ -331,7 +461,7 @@ export function fighterKit(card: FighterCard): FighterKit {
         basic[4],
         0,
         basic[5],
-        row[0] === "L" ? "kick" : "punch",
+        role.animation ?? (row[0] === "L" ? "kick" : "punch"),
       ),
       sweep: move(
         "sweep",
@@ -351,7 +481,7 @@ export function fighterKit(card: FighterCard): FighterKit {
         row[3],
         row[4],
         row[5],
-        240,
+        role.comboInterval,
         row[6],
         kick ? "kick" : "punch",
       ),
@@ -362,7 +492,7 @@ export function fighterKit(card: FighterCard): FighterKit {
         row[8],
         row[9],
         350,
-        300,
+        role.specialInterval,
         650,
         kick ? "kick" : "punch",
       ),

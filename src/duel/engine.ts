@@ -426,8 +426,12 @@ export function fighterPose(f: Fighter, clock: number): number {
               : 0,
           );
     const lv = move.levels[index];
-    if (move.animation === "sweep") return 5;
-    return move.animation === "punch" ? 2 : lv === "high" ? 3 : 4;
+    const animation =
+      index === move.levels.length - 1
+        ? (move.finisherAnimation ?? move.animation)
+        : move.animation;
+    if (animation === "sweep") return 5;
+    return animation === "punch" ? 2 : lv === "high" ? 3 : 4;
   }
   return f.down ? 5 : f.moving ? (Math.floor(clock / 150) % 2 ? 1 : 0) : 0;
 }

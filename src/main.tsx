@@ -56,6 +56,15 @@ const PIECES = {
   w: { k: "♔", q: "♕", r: "♖", b: "♗", n: "♘", p: "♙" },
   b: { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" },
 };
+const SETTINGS = "jokers-mate-settings-v1";
+function savedSetting(key: "hints" | "motion", fallback: boolean): boolean {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SETTINGS) ?? "null");
+    return typeof saved?.[key] === "boolean" ? saved[key] : fallback;
+  } catch {
+    return fallback;
+  }
+}
 function initial(): Game {
   if (fixtureGame) return fixtureGame;
   try {
@@ -174,11 +183,12 @@ function App() {
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null),
     [selectedCards, setSelectedCards] = useState<string[]>([]);
   const [modal, setModal] = useState<
-      "help" | "settings" | "records" | "menu" | "match" | "duel" | null
+      "help" | "settings" | "records" | "menu" | "match" | "duel" | "restart" | null
     >(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [retry, setRetry] = useState(0);
+  const [restartFrom, setRestartFrom] = useState<"title" | "menu">("menu");
   const currentGame = useRef(g);
   const lastBetAt = useRef(0);
   function setG(update: React.SetStateAction<Game>) {
@@ -202,10 +212,17 @@ function App() {
     from: string;
     to: string;
   } | null>(null);
-  const [hints, setHints] = useState(true),
+  const [hints, setHints] = useState(() => savedSetting("hints", true)),
     [motion, setMotion] = useState(
-      !matchMedia("(prefers-reduced-motion: reduce)").matches,
+      () => savedSetting("motion", !matchMedia("(prefers-reduced-motion: reduce)").matches),
     );
+  useEffect(() => {
+    try {
+      localStorage.setItem(SETTINGS, JSON.stringify({ hints, motion }));
+    } catch {
+      // Preferences remain usable for this session when storage is unavailable.
+    }
+  }, [hints, motion]);
   const [showdown, setShowdown] = useState({ id: "", step: 0, details: false });
   const [pageVisible, setPageVisible] = useState(!document.hidden);
   const showdownStep = showdown.id === g.id ? showdown.step : 0;
@@ -363,7 +380,7 @@ function App() {
     focusable()[0]?.focus();
     const f = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setModal(null);
+        setModal(modal === "restart" && restartFrom === "menu" ? "menu" : null);
         setPromotion(null);
       }
       if (e.key === "Tab") {
@@ -384,7 +401,7 @@ function App() {
       window.removeEventListener("keydown", f);
       previous?.focus();
     };
-  }, [modal, promotion]);
+  }, [modal, promotion, restartFrom]);
   function move(from: string, to: string, promote?: string) {
     try {
       setG(applyMove(g, { from, to, promotion: promote }));
@@ -500,19 +517,27 @@ function App() {
     setModal(null);
     setError("");
   }
+  function confirmRestart(from: "title" | "menu") {
+    setRestartFrom(from);
+    setModal("restart");
+  }
+  function closeModal() {
+    setModal(modal === "restart" && restartFrom === "menu" ? "menu" : null);
+  }
   useEffect(() => {
     function pauseHidden() {
       if (
         document.hidden &&
         !titleScreen &&
+        !promotion &&
         g.phase !== "lobby" &&
         g.phase !== "result"
       )
-        setModal("menu");
+        setModal((current) => current ?? "menu");
     }
     document.addEventListener("visibilitychange", pauseHidden);
     return () => document.removeEventListener("visibilitychange", pauseHidden);
-  }, [g.phase, titleScreen]);
+  }, [g.phase, titleScreen, promotion]);
   function returnToMenu() {
     setTitleScreen(true);
     setModal(null);
@@ -587,10 +612,10 @@ function App() {
               )}
               {storyScreen !== "prologue" && (
                 <button className={canContinue ? "secondary-start" : "primary"} onClick={() => {
-                  if (!canContinue || confirm("현재 이야기를 지우고 새 게임을 시작할까요?")) {
+                  if (!canContinue) {
                     restart();
                     setTitleScreen(false);
-                  }
+                  } else confirmRestart("title");
                 }}>새 게임</button>
               )}
             </div>
@@ -1251,7 +1276,7 @@ function App() {
       )}
       {modal === "duel" && <DuelLab motion={motion} onClose={() => setModal("settings")} />}
       {modal && modal !== "duel" && (
-        <div className="modal-backdrop" onClick={() => setModal(null)}>
+        <div className="modal-backdrop" onClick={closeModal}>
           <section
             className={`modal ${modal === "records" ? "wide" : ""}`}
             role="dialog"
@@ -1263,6 +1288,7 @@ function App() {
                 records: "기록",
                 menu: "메뉴",
                 match: "진행 중인 대국 기록",
+                restart: "새 게임 확인",
               }[modal]
             }
             onClick={(e) => e.stopPropagation()}
@@ -1270,7 +1296,7 @@ function App() {
             <button
               className="close"
               aria-label="닫기"
-              onClick={() => setModal(null)}
+              onClick={closeModal}
             >
               ×
             </button>
@@ -1357,16 +1383,7 @@ function App() {
                   <button onClick={() => setModal("settings")}>
                     설정
                   </button>
-                  <button
-                    onClick={() => {
-                      if (
-                        confirm(
-                          "현재 판을 종료하고 1,000골드로 새로 시작할까요? 완료 기록은 유지됩니다.",
-                        )
-                      )
-                        restart();
-                    }}
-                  >
+                  <button onClick={() => confirmRestart("menu")}>
                     새 게임
                   </button>
                   <button
@@ -1378,6 +1395,16 @@ function App() {
                   </button>
                 </div>
 
+              </>
+            )}
+            {modal === "restart" && (
+              <>
+                <h2>새 게임을 시작할까요?</h2>
+                <p>현재 대국과 이야기 진행을 초기화하고 로언과 1,000G로 다시 시작합니다. 완료한 대국 기록은 유지됩니다.</p>
+                <div className="menu-actions">
+                  <button onClick={closeModal}>취소 · 돌아가기</button>
+                  <button className="primary" onClick={() => { restart(); setTitleScreen(false); }}>새 게임으로 초기화</button>
+                </div>
               </>
             )}
             {modal === "records" && (

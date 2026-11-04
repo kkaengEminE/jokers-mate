@@ -26,6 +26,7 @@ import {
   type Input,
 } from "./engine";
 import "./duel.css";
+import "./finish.css";
 const ART = `${import.meta.env.BASE_URL}art/duel/`;
 const DEFAULTS: [FighterCard, FighterCard] = [
   { role: "q", suit: "H", rank: 9 },
@@ -38,6 +39,25 @@ const MODES: Record<OpponentMode, string> = {
   "low-guard": "앉아 방어하는 상대",
 };
 const STORAGE = "jokers-mate-duel-lab-v1";
+type Team = "w" | "b";
+const TEAM_LABEL: Record<Team, string> = { w: "백", b: "흑" };
+const TEAM_STORAGE = "jokers-mate-duel-team-v1";
+const SOUND_STORAGE = "jokers-mate-duel-sound-v1";
+const FINISH_DURATION = 3000;
+function initialSound(): boolean {
+  try {
+    return localStorage.getItem(SOUND_STORAGE) !== "off";
+  } catch {
+    return true;
+  }
+}
+function initialTeam(): Team {
+  try {
+    return localStorage.getItem(TEAM_STORAGE) === "b" ? "b" : "w";
+  } catch {
+    return "w";
+  }
+}
 function initialCards(): [FighterCard, FighterCard] {
   try {
     const c = JSON.parse(localStorage.getItem(STORAGE) || "null");
@@ -60,10 +80,12 @@ const effectLabels = {
 
 export function FighterArt({
   card,
+  team,
   pose = 0,
   opponent = false,
 }: {
   card: FighterCard;
+  team: Team;
   pose?: number;
   opponent?: boolean;
 }) {
@@ -71,7 +93,12 @@ export function FighterArt({
   const anchors = [95, 104, 90, 74, 79, 89, 104, 90];
   const cardY = [104, 105, 105, 100, 107, 143, 107, 149];
   return (
-    <svg className="duel-figure" viewBox="-30 -5 241 191" aria-hidden="true">
+    <svg
+      className="duel-figure"
+      data-team={team}
+      viewBox="-30 -5 241 191"
+      aria-hidden="true"
+    >
       <g transform={opponent ? "translate(180 0) scale(-1 1)" : undefined}>
         <svg
           x={90 - anchors[pose]}
@@ -81,18 +108,36 @@ export function FighterArt({
           viewBox={`${pose * 181} ${row * 181} 181 181`}
           overflow="hidden"
         >
-          <image href={`${ART}fighters.png`} width="1448" height="1086" />
+          <image
+            href={`${ART}fighters.png`}
+            width="1448"
+            height="1086"
+            style={{
+              filter:
+                team === "w"
+                  ? "grayscale(1) contrast(.55) brightness(1.6)"
+                  : "grayscale(1) contrast(.75) brightness(.5)",
+            }}
+          />
         </svg>
       </g>
       <text
         x="90"
         y={cardY[pose]}
         textAnchor="middle"
-        fill={card.suit === "H" || card.suit === "D" ? "#9b302e" : "#172c26"}
+        fill={
+          card.suit === "H" || card.suit === "D"
+            ? team === "w"
+              ? "#9b302e"
+              : "#ffb3a8"
+            : team === "w"
+              ? "#172c26"
+              : "#fff1cf"
+        }
         fontFamily="Georgia, serif"
         fontSize="13"
         fontWeight="bold"
-        stroke="#fff1cf"
+        stroke={team === "w" ? "#fff1cf" : "#172c26"}
         strokeWidth=".7"
         paintOrder="stroke"
       >
@@ -103,10 +148,12 @@ export function FighterArt({
 }
 function CardPicker({
   side,
+  team,
   card,
   onChange,
 }: {
   side: Side;
+  team: Team;
   card: FighterCard;
   onChange: (c: FighterCard) => void;
 }) {
@@ -119,12 +166,14 @@ function CardPicker({
     >
       <div className="duel-pick-heading">
         <span>{side === 0 ? "PLAYER 01" : "COMPUTER"}</span>
-        <h2>{title}</h2>
+        <h2>
+          {title} · {TEAM_LABEL[team]}
+        </h2>
         <strong style={{ color: kit.color }}>{kit.name}</strong>
       </div>
       <div className="duel-pick-body">
         <div className="duel-portrait">
-          <FighterArt card={card} opponent={side === 1} />
+          <FighterArt card={card} team={team} opponent={side === 1} />
           <span className="duel-floor-shadow" />
         </div>
         <div className="duel-selectors">
@@ -191,6 +240,7 @@ function CardPicker({
       </div>
       <div className="duel-traits">
         <span>체력 100</span>
+        <span>{kit.roleTrait}</span>
         <span>{kit.guardName}</span>
         <span>이동 {Math.round((kit.speed / 1.8) * 100)}%</span>
       </div>
@@ -366,12 +416,21 @@ export function DuelLab({
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [cards, setCards] = useState<[FighterCard, FighterCard]>(initialCards);
+  const [playerTeam, setPlayerTeam] = useState<Team>(initialTeam);
+  const teams: [Team, Team] = [playerTeam, playerTeam === "w" ? "b" : "w"];
+  useEffect(() => {
+    try {
+      localStorage.setItem(TEAM_STORAGE, playerTeam);
+    } catch {
+      /* Optional preference. */
+    }
+  }, [playerTeam]);
   const [mode, setMode] = useState<OpponentMode>("ai"),
     [fullMeter, setFullMeter] = useState(false);
   const [route, setRoute] = useState<"setup" | "arena">("setup");
   const [paused, setPaused] = useState(false),
     [confirmExit, setConfirmExit] = useState(false);
-  const [soundOn, setSoundOn] = useState(true),
+  const [soundOn, setSoundOn] = useState(initialSound),
     [toast, setToast] = useState("");
   const [resultVisible, setResultVisible] = useState(false),
     [frame, setFrame] = useState(0),
@@ -383,8 +442,18 @@ export function DuelLab({
     touch = useRef(emptyInput());
   const lastEvent = useRef(0),
     toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const finishElapsed = useRef(0);
+  const finishPoses = useRef<number[]>([0, 0]);
   const audio = useDuelSound(),
     audioRef = useRef(audio);
+  audio.enabled.current = soundOn;
+  useEffect(() => {
+    try {
+      localStorage.setItem(SOUND_STORAGE, soundOn ? "on" : "off");
+    } catch {
+      /* Optional preference. */
+    }
+  }, [soundOn]);
   audioRef.current = audio;
   routeRef.current = route;
   const resetControls = () => {
@@ -415,6 +484,8 @@ export function DuelLab({
     resetControls();
     battle.current = createDuel(cards[0], cards[1], mode, fullMeter);
     lastEvent.current = 0;
+    finishElapsed.current = 0;
+    finishPoses.current = [0, 0];
     setResultVisible(false);
     setConfirmExit(false);
     setPaused(false);
@@ -525,7 +596,6 @@ export function DuelLab({
     let raf = 0,
       previous = 0,
       accumulator = 0,
-      finishedAt = 0,
       lastPaint = 0;
     const animate = (now: number) => {
       const s = battle.current;
@@ -544,7 +614,15 @@ export function DuelLab({
           guard: t.guard || k.has("KeyL"),
         };
         while (accumulator >= 10) {
+          const poses = s.fighters.map((f) => fighterPose(f, s.elapsed));
           advanceDuel(s, input, 10);
+          // advanceDuel mutates phase; stop here to retain the final attack pose.
+          if ((s as DuelState).phase === "finished") {
+            finishPoses.current = poses;
+            resetControls();
+            accumulator = 0;
+            break;
+          }
           accumulator -= 10;
         }
       } else accumulator = 0;
@@ -552,9 +630,12 @@ export function DuelLab({
         audioRef.current.play(e.type);
         lastEvent.current = e.id;
       }
-      if (s.phase === "finished") {
-        if (!finishedAt) finishedAt = now;
-        if (now - finishedAt > 1600) setResultVisible(true);
+      if (s.phase === "finished" && !document.hidden) {
+        finishElapsed.current = Math.min(
+          FINISH_DURATION,
+          finishElapsed.current + dt,
+        );
+        if (finishElapsed.current >= FINISH_DURATION) setResultVisible(true);
       }
       if (now - lastPaint >= 30) {
         setFrame((v) => v + 1);
@@ -659,22 +740,35 @@ export function DuelLab({
             <div className="duel-introduction">
               <span className="duel-eyebrow">CHOOSE YOUR CHAMPIONS</span>
               <h2>오늘, 어떤 카드가 싸울까요?</h2>
-              <p>기물은 모습과 동작을, 문양과 숫자는 기술을 정합니다.</p>
+              <p>기물의 전투 방식에 숫자의 연계 기술과 문양 특성을 더합니다.</p>
             </div>
             <div className="duel-roster">
               <CardPicker
                 side={0}
+                team={teams[0]}
                 card={cards[0]}
                 onChange={(c) => changeCard(0, c)}
               />
               <span className="duel-versus">VS</span>
               <CardPicker
                 side={1}
+                team={teams[1]}
                 card={cards[1]}
                 onChange={(c) => changeCard(1, c)}
               />
             </div>
             <section className="duel-options" aria-label="대결 테스트 옵션">
+              <label>
+                내 진영 · 상대는 반대색
+                <select
+                  aria-label="내 진영"
+                  value={playerTeam}
+                  onChange={(e) => setPlayerTeam(e.target.value as Team)}
+                >
+                  <option value="w">나 백 / 상대 흑</option>
+                  <option value="b">나 흑 / 상대 백</option>
+                </select>
+              </label>
               <label>
                 상대 행동
                 <select
@@ -748,6 +842,7 @@ export function DuelLab({
                           : mode === "ai"
                             ? "상대 AI"
                             : "연습 상대"}
+                        {` · ${TEAM_LABEL[teams[i]]}`}
                       </span>
                       <b style={{ color: f.kit.color }}>{f.kit.name}</b>
                       <small>
@@ -827,21 +922,33 @@ export function DuelLab({
                         ["hit", "block", "dodge"].includes(e.type),
                     )
                     .at(-1);
-                  const pose = fighterPose(f, s.elapsed);
+                  const ending = s.phase === "finished";
+                  const pose = ending
+                    ? f.hp === 0
+                      ? !motion || finishElapsed.current >= 950
+                        ? 7
+                        : 6
+                      : finishElapsed.current < 220
+                        ? finishPoses.current[i]
+                        : 0
+                    : fighterPose(f, s.elapsed);
                   return (
                     <div
                       key={i}
-                      className={`duel-fighter ${i === 1 ? "enemy" : ""} ${f.moving ? "walking" : ""} ${f.hp === 0 ? "knocked-out" : ""} ${s.phase === "finished" && s.winner === i ? "winner" : ""} ${recent?.type === "hit" ? "struck" : ""} ${f.attack?.move.id === "sweep" ? "sweeping" : ""}`}
+                      className={`duel-fighter ${i === 1 ? "enemy" : ""} ${f.moving ? "walking" : ""} ${f.hp === 0 ? "knocked-out finishing-loss" : ""} ${s.phase === "finished" && s.winner === i ? "winner" : ""} ${recent?.type === "hit" && !ending ? "struck" : ""} ${f.attack?.move.id === "sweep" ? "sweeping" : ""}`}
+                      data-pose={pose}
                       style={
                         {
                           left: `calc(16% + ${(f.x / 8) * 68}% + var(--duel-separation))`,
                           "--fighter-color": f.kit.color,
+                          "--duel-finish-delay": `-${finishElapsed.current}ms`,
                         } as React.CSSProperties
                       }
                     >
                       <span className="duel-floor-shadow" />
                       <FighterArt
                         card={f.kit.card}
+                        team={teams[i]}
                         opponent={i === 1}
                         pose={pose}
                       />
@@ -850,7 +957,7 @@ export function DuelLab({
                           className={`duel-guard-arc ${f.down ? "low" : ""}`}
                         />
                       )}
-                      {recent && (
+                      {recent && (!ending || finishElapsed.current < 220) && (
                         <span
                           key={recent.id}
                           className={`duel-impact ${recent.type}`}
@@ -870,7 +977,7 @@ export function DuelLab({
                               : "↘"}
                         </span>
                       )}
-                      {recent && (
+                      {recent && !ending && (
                         <span
                           key={`n${recent.id}`}
                           className={`duel-damage ${recent.type}`}
@@ -880,7 +987,8 @@ export function DuelLab({
                         </span>
                       )}
                       <div className="duel-fighter-tag">
-                        {i === 0 ? "나" : "상대"} <b>{f.kit.name}</b>
+                        {i === 0 ? "나" : "상대"} · {TEAM_LABEL[teams[i]]}{" "}
+                        <b>{f.kit.name}</b>
                       </div>
                       {f.attack && (
                         <div className="duel-technique">
@@ -916,22 +1024,20 @@ export function DuelLab({
                       <strong>{e.move}</strong>
                     </div>
                   ))}
-                {s.phase === "finished" && !resultVisible && (
-                  <button
-                    className="duel-finish-banner"
-                    onClick={() => setResultVisible(true)}
-                  >
-                    <strong>
-                      {s.reason === "time"
-                        ? "TIME UP"
-                        : s.winner === null
-                          ? "DOUBLE K.O."
-                          : "K.O."}
-                    </strong>
-                    <span>{endTitle}</span>
-                    <small>눌러서 결과 보기</small>
-                  </button>
-                )}
+                {s.phase === "finished" &&
+                  !resultVisible &&
+                  finishElapsed.current >= 950 && (
+                    <div className="duel-finish-caption" role="status">
+                      <strong>
+                        {s.reason === "time"
+                          ? "TIME UP"
+                          : s.winner === null
+                            ? "DOUBLE K.O."
+                            : "K.O."}
+                      </strong>
+                      <span>{endTitle}</span>
+                    </div>
+                  )}
               </div>
               <div className="duel-controls" aria-label="대결 조작">
                 <div className="duel-direction">
@@ -978,7 +1084,7 @@ export function DuelLab({
                   >
                     <kbd>L</kbd>
                     <span>방어</span>
-                    <small>누르고 유지</small>
+                    <small>길게 유지</small>
                   </HoldButton>
                   <ActionButton
                     className={`duel-special-button ${s.fighters[0].meter === 100 ? "ready" : ""}`}

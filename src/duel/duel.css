@@ -74,7 +74,9 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 18px clamp(16px, 4vw, 56px);
+  padding: max(18px, env(safe-area-inset-top))
+    max(16px, 4vw, env(safe-area-inset-right)) 18px
+    max(16px, 4vw, env(safe-area-inset-left));
   border-bottom: 1px solid #c5ab6e40;
 }
 .duel-eyebrow {
@@ -233,13 +235,13 @@
 }
 .duel-lab select {
   width: 100%;
-  min-height: 38px;
+  min-height: 48px;
   border: 1px solid #b39e6055;
   background: #0d241f;
   border-radius: 6px;
   color: #f1e4be;
   padding: 7px 10px;
-  font-size: 14px;
+  font-size: 16px;
 }
 .duel-traits {
   display: flex;
@@ -248,7 +250,7 @@
   margin: 0 0 16px;
 }
 .duel-traits span {
-  font-size: 10px;
+  font-size: 12px;
   color: #c9c8ac;
   background: #c0b4740d;
   border: 1px solid #b6a06c33;
@@ -293,6 +295,7 @@
 }
 .duel-options {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 26px;
@@ -303,6 +306,7 @@
 }
 .duel-check {
   display: flex;
+  min-height: 44px;
   align-items: center;
   gap: 9px;
   font-size: 12px;
@@ -350,6 +354,7 @@
 }
 .duel-help summary {
   cursor: pointer;
+  min-height: 44px;
   padding: 6px 0;
 }
 .duel-match {
@@ -439,7 +444,7 @@
 .duel-hud-numbers {
   display: flex;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: 12px;
   margin: 4px 0;
   color: #c8bd95;
 }
@@ -517,7 +522,8 @@
   border: 0;
   background: none;
   padding: 0 12px;
-  min-height: 28px;
+  min-width: 48px;
+  min-height: 48px;
   color: #c6b07a;
   font-weight: 700;
 }
@@ -604,7 +610,7 @@
   background: #0d2b24e6;
   border: 1px solid #c0aa7466;
   border-radius: 10px;
-  font-size: 9px;
+  font-size: 12px;
   width: max-content;
   max-width: 100%;
   padding: 2px 10px;
@@ -614,7 +620,7 @@
   color: var(--fighter-color);
   padding-left: 5px;
   font-family: Georgia, serif;
-  font-size: 12px;
+  font-size: 14px;
 }
 .duel-technique {
   position: absolute;
@@ -859,7 +865,7 @@
   font-size: 12px;
 }
 .duel-actions button > small {
-  font-size: 9px;
+  font-size: 12px;
   color: #c5ba95;
 }
 .duel-lab .duel-actions .duel-guard-button {
@@ -1032,7 +1038,9 @@
 }
 @media (max-width: 800px) {
   .duel-header {
-    padding: 12px 18px;
+    padding: max(12px, env(safe-area-inset-top))
+      max(18px, env(safe-area-inset-right)) 12px
+      max(18px, env(safe-area-inset-left));
     min-height: 72px;
   }
   .duel-header h1 {
@@ -1067,15 +1075,15 @@
     gap: 3px;
   }
   .duel-traits span {
-    font-size: 9px;
+    font-size: 12px;
   }
   .duel-move-list dt {
-    font-size: 11px;
+    font-size: 13px;
   }
   .duel-move-list dd {
     flex-direction: column;
     gap: 2px;
-    font-size: 9px;
+    font-size: 12px;
   }
   .duel-options {
     gap: 15px;
@@ -1098,7 +1106,8 @@
     display: none;
   }
   .duel-controls {
-    padding: 12px 3%;
+    padding: 12px max(3%, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom)) max(3%, env(safe-area-inset-left));
     gap: 8px;
   }
   .duel-control-note {
@@ -1153,7 +1162,7 @@
     width: 240px;
   }
   .duel-selectors label {
-    font-size: 11px;
+    font-size: 13px;
   }
   .duel-move-list > div {
     padding: 8px 0;
@@ -1162,10 +1171,10 @@
     flex-direction: row;
     align-items: center;
     gap: 10px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .duel-move-list dt {
-    font-size: 12px;
+    font-size: 13px;
   }
   .duel-options {
     flex-wrap: wrap;
@@ -1193,10 +1202,10 @@
   .duel-hud {
     gap: 66px;
     padding: 12px 14px;
-    flex-basis: 100px;
+    flex-basis: 124px;
   }
   .duel-hud-name {
-    font-size: 10px;
+    font-size: 12px;
   }
   .duel-hud-name > b {
     font-size: 15px;
@@ -1206,8 +1215,7 @@
     top: 12px;
   }
   .duel-timer small {
-    font-size: 6px;
-    letter-spacing: 1px;
+    display: none;
   }
   .duel-timer strong {
     font-size: 34px;
@@ -1216,10 +1224,18 @@
     height: 17px;
   }
   .duel-hud-numbers {
-    font-size: 9px;
+    font-size: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 16px;
+    gap: 2px;
+  }
+  .duel-health.rival .duel-hud-numbers {
+    flex-direction: column;
+    align-items: flex-end;
   }
   .duel-arena {
-    min-height: 215px;
+    min-height: 168px;
     background-position: center bottom;
   }
   .duel-fighter {
@@ -1232,31 +1248,32 @@
     --duel-separation: 7.5%;
   }
   .duel-technique {
-    font-size: 9px;
+    font-size: 12px;
     top: -25px;
     padding: 3px 5px;
   }
   .duel-stage-label {
-    font-size: 9px;
+    font-size: 12px;
     top: 8px;
   }
   .duel-damage {
     font-size: 14px;
   }
   .duel-controls {
-    flex: 0 0 160px;
+    flex: 0 0 calc(168px + env(safe-area-inset-bottom));
     align-items: center;
-    padding: 12px;
+    padding: 12px max(8px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
     gap: 10px;
   }
   .duel-direction {
-    gap: 3px;
+    gap: 4px;
     align-items: center;
   }
   .duel-lab .duel-direction button {
-    width: 42px;
-    min-width: 42px;
-    height: 55px;
+    width: 48px;
+    min-width: 48px;
+    height: 56px;
     padding: 4px;
     font-size: 22px;
   }
@@ -1267,7 +1284,7 @@
   .duel-lab .duel-actions button {
     width: 76px;
     min-width: 0;
-    height: 61px;
+    height: 64px;
     gap: 2px;
   }
   .duel-actions button kbd {
@@ -1278,10 +1295,10 @@
     padding: 0 2px;
   }
   .duel-actions button > span {
-    font-size: 12px;
+    font-size: 13px;
   }
   .duel-actions button > small {
-    font-size: 8px;
+    font-size: 12px;
   }
   .duel-toast {
     bottom: 170px;
@@ -1307,12 +1324,8 @@
     font-size: 7px;
     letter-spacing: 1px;
   }
-  .duel-lab .duel-direction button {
-    width: 38px;
-    min-width: 38px;
-  }
   .duel-lab .duel-actions button {
-    width: 70px;
+    width: 64px;
   }
   .duel-pick {
     padding-inline: 12px;
@@ -1322,13 +1335,16 @@
   }
   .duel-move-list dd {
     gap: 5px;
-    font-size: 9px;
+    font-size: 12px;
+    flex-direction: column;
+    align-items: flex-end;
   }
 }
 @media (max-height: 540px) and (min-width: 561px) {
   .duel-header {
-    min-height: 48px;
-    padding: 5px 18px;
+    min-height: 52px;
+    padding: 4px max(18px, env(safe-area-inset-right)) 4px
+      max(18px, env(safe-area-inset-left));
   }
   .duel-header .duel-eyebrow {
     display: none;
@@ -1338,20 +1354,20 @@
     font-size: 17px;
   }
   .duel-header .duel-close {
-    min-height: 34px;
+    min-height: 44px;
     padding: 5px 12px;
   }
   .duel-match {
     min-height: 300px;
   }
   .duel-hud {
-    flex-basis: 75px;
+    flex-basis: 96px;
     padding-top: 7px;
     padding-bottom: 7px;
   }
   .duel-hud-name {
     margin-bottom: 3px;
-    font-size: 9px;
+    font-size: 12px;
   }
   .duel-hud-name > b {
     font-size: 16px;
@@ -1361,37 +1377,42 @@
   }
   .duel-hud-numbers {
     margin: 2px 0;
-    font-size: 8px;
+    font-size: 12px;
   }
   .duel-meter {
     height: 5px;
   }
   .duel-timer {
-    top: 7px;
+    top: 6px;
+  }
+  .duel-timer small {
+    display: none;
   }
   .duel-timer strong {
     font-size: 31px;
   }
   .duel-timer button {
-    min-height: 18px;
+    min-height: 48px;
   }
   .duel-arena {
-    min-height: 140px;
+    min-height: 110px;
+    container-type: size;
   }
   .duel-fighter {
     width: 20%;
-    max-width: 195px;
-    min-width: 110px;
+    max-width: min(195px, calc((100cqh - 28px) * 241 / 191));
+    min-width: 90px;
     bottom: 2%;
   }
   .duel-stage-label {
     top: 4px;
-    font-size: 8px;
+    font-size: 11px;
     padding: 3px 10px;
   }
   .duel-controls {
-    flex-basis: 76px;
-    padding: 6px 4%;
+    flex-basis: calc(84px + env(safe-area-inset-bottom));
+    padding: 6px max(4%, env(safe-area-inset-right))
+      max(6px, env(safe-area-inset-bottom)) max(4%, env(safe-area-inset-left));
   }
   .duel-lab .duel-direction button {
     width: 48px;
@@ -1404,10 +1425,10 @@
     gap: 2px;
   }
   .duel-actions button > span {
-    font-size: 10px;
+    font-size: 13px;
   }
   .duel-actions button > small {
-    font-size: 8px;
+    font-size: 12px;
   }
   .duel-toast {
     bottom: 80px;
@@ -1420,6 +1441,11 @@
     font-size: 60px;
   }
   .duel-countdown p {
+    display: none;
+  }
+}
+@media (pointer: coarse) {
+  .duel-controls kbd {
     display: none;
   }
 }

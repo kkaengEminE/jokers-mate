@@ -1,10 +1,16 @@
 import { describe, it, expect } from "vitest";
-import { fighterKit, type FighterCard } from "../src/duel/cards";
+import {
+  fighterKit,
+  ROLES,
+  type FighterCard,
+  type DuelSuit,
+} from "../src/duel/cards";
 import {
   createDuel,
   advanceDuel,
   queueAction,
   emptyInput,
+  fighterPose,
   type OpponentMode,
   type DuelState,
 } from "../src/duel/engine";
@@ -23,20 +29,118 @@ function duel(
 }
 const run = (s: DuelState, ms: number) => advanceDuel(s, emptyInput(), ms);
 describe("card duel rules", () => {
-  it("keeps role cosmetic and gives heart 9 the specified three-hit special", () => {
-    const a = fighterKit(heart9),
-      b = fighterKit({ ...heart9, role: "p" });
-    expect(a.moves).toEqual(b.moves);
+  it("preserves the queen heart 9 baseline in formula v2", () => {
+    const a = fighterKit(heart9);
+    expect(a.formulaVersion).toBe(2);
+    expect(a.moves.basic.damage).toEqual([600]);
+    expect(a.moves.combo.damage).toEqual([500, 700]);
     expect(a.moves.special.damage).toEqual([800, 800, 1000]);
     expect(a.moves.special.levels).toEqual(["high", "mid", "low"]);
     expect(a.moves.special.startup).toBe(350);
     expect(a.moves.special.interval).toBe(300);
   });
   it("applies club damage and rounding without changing hit count", () => {
-    const k = fighterKit({ role: "p", suit: "C", rank: 13 });
+    const k = fighterKit({ role: "q", suit: "C", rank: 13 });
     expect(k.moves.combo.damage).toEqual([1540]);
     expect(k.moves.special.damage).toEqual([3080]);
     expect(k.moves.special.recovery).toBe(748);
+  });
+  it("changes king and queen spade 10 attacks in combat, not just their names", () => {
+    const queen = fighterKit({ role: "q", suit: "S", rank: 10 });
+    const king = fighterKit({ role: "k", suit: "S", rank: 10 });
+    expect(queen.moves.basic.levels).toEqual(["low"]);
+    expect(king.moves.basic.levels).toEqual(["mid"]);
+    expect(king.moves.basic.damage).toEqual([665]);
+    expect(queen.moves.combo.levels).toEqual(["low", "low"]);
+    expect(king.moves.combo.levels).toEqual(["low", "mid"]);
+    expect(king.moves.combo.damage).toEqual([499, 599]);
+    const guardedQueen = duel("low-guard", false, {
+      role: "q",
+      suit: "S",
+      rank: 10,
+    });
+    const guardedKing = duel("low-guard", false, {
+      role: "k",
+      suit: "S",
+      rank: 10,
+    });
+    queueAction(guardedQueen, 0, "basic");
+    queueAction(guardedKing, 0, "basic");
+    run(guardedQueen, 1000);
+    run(guardedKing, 1000);
+    expect(guardedQueen.fighters[1].hp).toBe(10000);
+    expect(guardedKing.fighters[1].hp).toBe(9335);
+  });
+  it("gives every role distinct attacks while each input retains its own job", () => {
+    const kits = ROLES.map(({ value }) =>
+      fighterKit({ ...heart9, role: value }),
+    );
+    const mechanicalSignature = (k: ReturnType<typeof fighterKit>) =>
+      JSON.stringify(
+        Object.values(k.moves).map(
+          ({ name: _name, ...mechanics }) => mechanics,
+        ),
+      );
+    expect(new Set(kits.map(mechanicalSignature)).size).toBe(6);
+    for (const k of kits) {
+      expect(k.roleTrait.length).toBeGreaterThan(0);
+      expect(k.guardLevel).toBe("high");
+      expect(k.guardScale).toBe(0.75);
+    }
+    const pawn9 = fighterKit({ ...heart9, role: "p" });
+    const pawn10 = fighterKit({ role: "p", suit: "H", rank: 10 });
+    expect(pawn9.moves.basic).toEqual(pawn10.moves.basic);
+    expect(pawn9.moves.combo).not.toEqual(pawn10.moves.combo);
+    const clubPawn = fighterKit({ role: "p", suit: "C", rank: 9 });
+    expect(clubPawn.moves.basic.damage).toEqual([440]);
+    expect(clubPawn.guardLevel).toBe("all");
+  });
+  it("mixes the number's opening attack with the role's final attack pose", () => {
+    const s = duel("idle", false, { ...heart9, role: "r" });
+    queueAction(s, 0, "combo");
+    run(s, 290);
+    expect(s.fighters[0].attack?.next).toBe(1);
+    expect(fighterPose(s.fighters[0], s.elapsed)).toBe(3);
+    run(s, 330);
+    expect(s.fighters[0].attack?.next).toBe(2);
+    expect(fighterPose(s.fighters[0], s.elapsed)).toBe(2);
+  });
+  it("builds all 312 regular combinations and 12 joker combinations with valid bounded attacks", () => {
+    const cards: FighterCard[] = ROLES.flatMap(({ value: role }) => [
+      ...(["H", "S", "D", "C"] as DuelSuit[]).flatMap((suit) =>
+        Array.from({ length: 13 }, (_, i) => ({ role, suit, rank: i + 2 })),
+      ),
+      { role, suit: "J" as const, rank: 1 },
+      { role, suit: "J" as const, rank: 2 },
+    ]);
+    expect(cards).toHaveLength(324);
+    for (const card of cards) {
+      const kit = fighterKit(card);
+      expect(fighterKit(card)).toEqual(kit);
+      for (const attack of Object.values(kit.moves)) {
+        expect(attack.levels.length).toBe(attack.damage.length);
+        expect(attack.damage.length).toBeGreaterThan(0);
+        expect(attack.damage.every((n) => Number.isInteger(n) && n > 0)).toBe(
+          true,
+        );
+        expect(
+          attack.damage.reduce((sum, n) => sum + n, 0),
+        ).toBeLessThanOrEqual(3500);
+        expect(attack.range).toBeGreaterThan(0);
+        expect(Number.isInteger(attack.startup)).toBe(true);
+        expect(Number.isInteger(attack.recovery)).toBe(true);
+        expect(attack.startup).toBeGreaterThan(0);
+        expect(attack.recovery).toBeGreaterThan(0);
+      }
+    }
+    for (const { value: role } of ROLES) {
+      expect(fighterKit({ role, suit: "J", rank: 1 }).moves).toEqual(
+        fighterKit({ role, suit: "S", rank: 5 }).moves,
+      );
+      expect(fighterKit({ role, suit: "J", rank: 2 }).moves).toEqual(
+        fighterKit({ role, suit: "D", rank: 7 }).moves,
+      );
+    }
   });
   it("resolves jokers predictably and rejects malformed selections", () => {
     expect(fighterKit({ role: "b", suit: "J", rank: 1 }).moves).toEqual(
